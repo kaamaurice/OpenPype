@@ -323,6 +323,13 @@ class TaskTypeEnumEntity(BaseEnumEntity):
 
         return enum_items, valid_keys
 
+    def _convert_value_for_current_state(self, source_value):
+        output = []
+        for key in source_value:
+            if key in self.valid_keys:
+                output.append(key)
+        return output
+
     def set_override_state(self, *args, **kwargs):
         super(TaskTypeEnumEntity, self).set_override_state(*args, **kwargs)
 
