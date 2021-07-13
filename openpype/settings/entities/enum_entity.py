@@ -338,7 +338,9 @@ class TaskTypeEnumEntity(BaseEnumEntity):
         for key in self._current_value:
             if key in self.valid_keys:
                 new_value.append(key)
-        self._current_value = new_value
+
+        if self._current_value != new_value:
+            self.set(new_value)
 
 
 class ProvidersEnum(BaseEnumEntity):
