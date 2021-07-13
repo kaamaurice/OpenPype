@@ -271,6 +271,15 @@ class InputEntity(EndpointEntity):
 
         self._current_value = copy.deepcopy(value)
 
+    def _convert_value_for_current_state(self, source_value):
+        """Prepare value form different state for current state.
+
+        Default implementation just create copy of source value. But in more
+        dynamic entities it is required to validate content as valid values may
+        differ per project.
+        """
+        return copy.deepcopy(source_value)
+
     def _discard_changes(self, on_change_trigger=None):
         if not self._can_discard_changes:
             return
@@ -279,7 +288,7 @@ class InputEntity(EndpointEntity):
         if self._override_state >= OverrideState.PROJECT:
             self._has_project_override = self.had_project_override
             if self.had_project_override:
-                self._current_value = copy.deepcopy(
+                self._current_value = self._convert_value_for_current_state(
                     self._project_override_value
                 )
                 on_change_trigger.append(self.on_change)
@@ -288,7 +297,7 @@ class InputEntity(EndpointEntity):
         if self._override_state >= OverrideState.STUDIO:
             self._has_studio_override = self.had_studio_override
             if self.had_studio_override:
-                self._current_value = copy.deepcopy(
+                self._current_value = self._convert_value_for_current_state(
                     self._studio_override_value
                 )
                 on_change_trigger.append(self.on_change)
@@ -299,7 +308,7 @@ class InputEntity(EndpointEntity):
                 value = self._default_value
             else:
                 value = self.value_on_not_set
-            self._current_value = copy.deepcopy(value)
+            self._current_value = self._convert_value_for_current_state(value)
             on_change_trigger.append(self.on_change)
             return
 
