@@ -14,7 +14,10 @@ from openpype.pipeline.create import (
     SUBSET_NAME_ALLOWED_SYMBOLS
 )
 
-from openpype.tools.utils import ErrorMessageBox
+from openpype.tools.utils import (
+    ErrorMessageBox,
+    MessageOverlayObject,
+)
 
 from .widgets import IconValuePixmapLabel
 from .assets_widget import CreateDialogAssetsWidget
@@ -207,6 +210,8 @@ class CreateDialog(QtWidgets.QDialog):
 
         self.setWindowTitle("Create new instance")
 
+        overlay_object = MessageOverlayObject(self)
+
         self.controller = controller
 
         if asset_name is None:
@@ -354,6 +359,8 @@ class CreateDialog(QtWidgets.QDialog):
         tasks_widget.task_changed.connect(self._on_task_change)
 
         controller.add_plugins_refresh_callback(self._on_plugins_refresh)
+
+        self._overlay_object = overlay_object
 
         self._splitter_widget = splitter_widget
 
@@ -852,3 +859,8 @@ class CreateDialog(QtWidgets.QDialog):
             box.show()
             # Store dialog so is not garbage collected before is shown
             self._message_dialog = box
+
+        else:
+            self._overlay_object.add_message(
+                "Created...", message_type="success"
+            )
