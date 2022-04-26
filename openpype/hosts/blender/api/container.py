@@ -103,10 +103,10 @@ def link_collection_to_collection(collection_to_link, collection):
         collection.children.link(collection_to_link)
 
 
-def link_object_to_collection(object_to_link, object):
-    """link an item to an object"""
-    if object_to_link not in object.objects.values():
-        object.objects.link(object_to_link)
+def link_object_to_collection(object_to_link, collection):
+    """link an item to a collection"""
+    if object_to_link not in collection.objects.values():
+        collection.objects.link(object_to_link)
 
 
 def set_fake_user_on_orphans():
@@ -170,28 +170,28 @@ def set_original_name_for_objects_container(container, has_namespace=False):
     # Set the orginal_name for all the objects and collections in the container
     # or namespace + original name if AVALON_TASK != "modelling"
     objects = get_all_objects_in_collection(container)
-    for object in objects:
-        if object.get("original_name"):
-            if has_namespace and object.get("namespace"):
-                object.name = (
-                    f'{object["namespace"]}:{object["original_name"]}'
+    for obj in objects:
+        if obj.get("original_name"):
+            if has_namespace and obj.get("namespace"):
+                obj.name = (
+                    f'{obj["namespace"]}:{obj["original_name"]}'
                 )
             else:
-                object.name = object["original_name"]
-        if object.data is not None:
-            if object.data.get("original_name"):
-                if object.type != "EMPTY":
+                obj.name = obj["original_name"]
+        if obj.data is not None:
+            if obj.data.get("original_name"):
+                if obj.type != "EMPTY":
                     if (
                         has_namespace
-                        and object.data.get("namespace")
-                        and object.data.get("original_name")
+                        and obj.data.get("namespace")
+                        and obj.data.get("original_name")
                     ):
-                        object.data.name = (
-                            f'{object.data["namespace"]}:'
-                            f'{object.data["original_name"]}'
+                        obj.data.name = (
+                            f'{obj.data["namespace"]}:'
+                            f'{obj.data["original_name"]}'
                         )
                     else:
-                        object.data.name = object.data["original_name"]
+                        obj.data.name = obj.data["original_name"]
 
     collections = get_all_collections_in_collection(container)
     for collection in collections:
@@ -206,12 +206,12 @@ def set_original_name_for_objects_container(container, has_namespace=False):
 
 def set_temp_namespace_for_objects_container(container):
     objects = get_all_objects_in_collection(container)
-    for object in objects:
-        if object.get("original_name"):
-            object.name = f'temp:{object["original_name"]}'
-        if object.type != "EMPTY":
-            if object.data is not None:
-                object.data.name = f'temp:{object["original_name"]}'
+    for obj in objects:
+        if obj.get("original_name"):
+            obj.name = f'temp:{obj["original_name"]}'
+        if obj.type != "EMPTY":
+            if obj.data is not None:
+                obj.data.name = f'temp:{obj["original_name"]}'
     collections = get_all_collections_in_collection(container)
     for collection in collections:
         if collection.get("original_name"):
@@ -220,12 +220,12 @@ def set_temp_namespace_for_objects_container(container):
 
 def remove_namespace_for_objects_container(container):
     objects = get_all_objects_in_collection(container)
-    for object in objects:
-        name = object.name
+    for obj in objects:
+        name = obj.name
         name_split = name.split(":")
         if len(name_split) > 1:
             name = name_split[1]
-        object.name = name
+        obj.name = name
     collections = get_all_collections_in_collection(container)
     for collection in collections:
         name = collection.name
@@ -270,10 +270,10 @@ def get_all_objects_in_collection(collection_input):
     # Get all recursively the objects in the collectin_input
     for collection in collection_list:
         nodes = collection.objects.values()
-        for object in nodes:
-            if object not in objects_list:
-                objects_list.append(object)
-            nodes.extend(object.children)
+        for obj in nodes:
+            if obj not in objects_list:
+                objects_list.append(obj)
+            nodes.extend(obj.children)
     return objects_list
 
 
@@ -297,8 +297,8 @@ def get_model_unique_number(current_container_name: str) -> str:
 
 def is_local_collection(collection):
     """Check if all members of a collection are local"""
-    for object in collection.all_objects:
-        if object.library is None and object.override_library is None:
+    for obj in collection.all_objects:
+        if obj.library is None and obj.override_library is None:
             return True
     collections_list = get_all_collections_in_collection(collection)
     # collections_list.append(collection)
