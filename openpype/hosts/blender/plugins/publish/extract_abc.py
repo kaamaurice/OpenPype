@@ -32,8 +32,9 @@ class ExtractABC(api.Extractor):
 
         selected = []
         asset_group = None
-
-        for obj in instance:
+        collection = bpy.data.collections[instance.name]
+        objects = plugin.get_all_objects_in_collection(collection)
+        for obj in objects:
             obj.select_set(True)
             selected.append(obj)
             if obj.get(AVALON_PROPERTY):

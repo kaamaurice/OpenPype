@@ -23,8 +23,8 @@ class ExtractLayout(openpype.api.Extractor):
 
     def _export_animation(self, asset, instance, stagingdir, fbx_count):
         n = fbx_count
-
-        for obj in asset.children:
+        objects = plugin.get_all_objects_in_collection(asset)
+        for obj in objects:
             if obj.type != "ARMATURE":
                 continue
 
@@ -127,8 +127,7 @@ class ExtractLayout(openpype.api.Extractor):
         json_data = []
         fbx_files = []
 
-        asset_group = bpy.data.objects[str(instance)]
-
+        asset_group = bpy.data.collections[instance.name]
         fbx_count = 0
 
         for asset in asset_group.children:
@@ -186,20 +185,20 @@ class ExtractLayout(openpype.api.Extractor):
 
             json_element["transform"] = {
                 "translation": {
-                    "x": asset.location.x,
-                    "y": asset.location.y,
-                    "z": asset.location.z
+                    "x": 0,
+                    "y": 0,
+                    "z": 0,
                 },
                 "rotation": {
-                    "x": asset.rotation_euler.x,
-                    "y": asset.rotation_euler.y,
-                    "z": asset.rotation_euler.z,
+                    "x": 0,
+                    "y": 0,
+                    "z": 0,
                 },
                 "scale": {
-                    "x": asset.scale.x,
-                    "y": asset.scale.y,
-                    "z": asset.scale.z
-                }
+                    "x": 1,
+                    "y": 1,
+                    "z": 1,
+                },
             }
 
             # Extract the animation as well
