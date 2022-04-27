@@ -31,12 +31,15 @@ PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
+INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 ORIGINAL_EXCEPTHOOK = sys.excepthook
 
 AVALON_INSTANCES = "AVALON_INSTANCES"
 AVALON_CONTAINERS = "AVALON_CONTAINERS"
 AVALON_PROPERTY = 'avalon'
+MODEL_TASK_NAME = "Model"
+RIG_TASK_NAME = "Rig"
 IS_HEADLESS = bpy.app.background
 
 log = Logger.get_logger(__name__)
@@ -197,6 +200,30 @@ def _register_events():
 
     register_event_callback("taskChanged", _on_task_changed)
     log.info("Installed event callback for 'taskChanged'...")
+
+
+def reload_pipeline(*args):
+    """Attempt to reload pipeline at run-time.
+
+    Warning:
+        This is primarily for development and debugging purposes and not well
+        tested.
+
+    """
+
+    uninstall_host()
+
+    for module in (
+        "avalon.io",
+        "avalon.lib",
+        "avalon.pipeline",
+        "avalon.tools.creator.app",
+        "avalon.tools.manager.app",
+        "avalon.api",
+        "avalon.tools",
+    ):
+        module = importlib.import_module(module)
+        importlib.reload(module)
 
 
 def _discover_gui() -> Optional[Callable]:
@@ -371,9 +398,25 @@ def ls() -> Iterator:
     disk, it lists assets already loaded in Blender; once loaded they are
     called containers.
     """
+    collections = lib.lsattr("id", AVALON_CONTAINER_ID)
+    for container in collections:
+        is_not_override_override_of_override = True
+        is_not_linked = (
+            container.library is None and container.override_library is None
+        )
+        is_override = container.library is None and container.override_library
 
-    for container in lib.lsattr("id", AVALON_CONTAINER_ID):
-        yield parse_container(container)
+        if is_override:
+            if (
+                container.override_library.reference.library
+                and container.override_library.reference.override_library
+            ):
+                is_not_override_override_of_override = False
+            collections.append(container.override_library.reference)
+        if (is_override and is_not_override_override_of_override) or (
+            is_not_linked
+        ):
+            yield parse_container(container)
 
 
 def update_hierarchy(containers):

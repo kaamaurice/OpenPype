@@ -3,6 +3,7 @@ import os
 import bpy
 
 import openpype.api
+from openpype.hosts.blender.api import plugin
 
 
 class ExtractBlendAnimation(openpype.api.Extractor):
@@ -24,8 +25,9 @@ class ExtractBlendAnimation(openpype.api.Extractor):
         self.log.info("Performing extraction..")
 
         data_blocks = set()
-
-        for obj in instance:
+        collection = bpy.data.collections[instance.name]
+        objects = plugin.get_all_objects_in_collection(collection)
+        for obj in objects:
             if isinstance(obj, bpy.types.Object) and obj.type == 'EMPTY':
                 child = obj.children[0]
                 if child and child.type == 'ARMATURE':
