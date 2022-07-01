@@ -1,7 +1,9 @@
 from typing import List
 
+import bpy
+
 import pyblish.api
-import openpype.hosts.blender.api.action
+from openpype.hosts.blender.api.action import SelectInvalidAction
 
 
 class ValidateObjectIsInObjectMode(pyblish.api.InstancePlugin):
@@ -9,23 +11,19 @@ class ValidateObjectIsInObjectMode(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder - 0.01
     hosts = ["blender"]
-    families = ["model", "rig", "layout"]
+    families = ["model", "rig", "layout", "animation", "setdress"]
     category = "geometry"
     label = "Validate Object Mode"
-    actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
+    actions = [SelectInvalidAction]
     optional = False
 
     @staticmethod
     def get_invalid(instance) -> List:
         invalid = []
         for obj in set(instance):
-            try:
-                if obj.type == 'MESH' or obj.type == 'ARMATURE':
-                    # Check if the object is in object mode.
-                    if not obj.mode == 'OBJECT':
-                        invalid.append(obj)
-            except Exception:
-                continue
+            if isinstance(obj, bpy.types.Object):
+                if not obj.mode == 'OBJECT':
+                    invalid.append(obj)
         return invalid
 
     def process(self, instance):
