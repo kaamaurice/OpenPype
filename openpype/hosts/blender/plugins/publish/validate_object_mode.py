@@ -11,7 +11,12 @@ class ValidateObjectIsInObjectMode(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder - 0.01
     hosts = ["blender"]
+<<<<<<< HEAD
     families = ["model", "rig", "layout", "setdress", "look"]
+=======
+    families = ["model", "rig", "layout", "animation", "setdress", "look"]
+    category = "geometry"
+>>>>>>> Blender lookdev creator
     label = "Validate Object Mode"
     actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
     optional = False
