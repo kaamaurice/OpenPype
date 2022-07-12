@@ -192,10 +192,11 @@ class LaunchQtApp(bpy.types.Operator):
         self._app = BlenderApplication.get_app()
         GlobalClass.app = self._app
 
-        bpy.app.timers.register(
-            _process_app_events,
-            persistent=True
-        )
+        if not bpy.app.timers.is_registered(_process_app_events):
+            bpy.app.timers.register(
+                _process_app_events,
+                persistent=True
+            )
 
     def execute(self, context):
         """Execute the operator.
