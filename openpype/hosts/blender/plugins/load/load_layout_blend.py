@@ -36,8 +36,6 @@ class LayoutMaintainer(plugin.ContainerMaintainer):
                 and collection[AVALON_PROPERTY]["family"] == "animation"
             )
         }
-        import pprint
-        pprint.pprint(animation_instances)
         try:
             yield
         finally:
@@ -45,7 +43,6 @@ class LayoutMaintainer(plugin.ContainerMaintainer):
             scene_collections = set(
                 plugin.get_children_recursive(bpy.context.scene.collection)
             )
-            pprint.pprint(scene_collections)
 
             for instance_name, content in animation_instances.items():
                 # Ensure animation instance still linked to the scene.
