@@ -4,6 +4,16 @@
         "custom_templates": []
     },
     "publish": {
+        "ValidateMeshHasUvs": {
+            "enabled": true,
+            "optional": true,
+            "active": true
+        },
+        "ValidateTransformZero": {
+            "enabled": true,
+            "optional": false,
+            "active": true
+        },
         "ValidateLinkedVersion": {
             "enabled": true,
             "optional": true,
@@ -33,23 +43,23 @@
         "ExtractFBX": {
             "enabled": true,
             "optional": true,
-            "active": true,
+            "active": false,
             "scale_length": 0
         },
         "ExtractAnimationFBX": {
             "enabled": true,
             "optional": true,
-            "active": true
+            "active": false
         },
         "ExtractABC": {
             "enabled": true,
             "optional": true,
-            "active": true
+            "active": false
         },
         "ExtractLayout": {
             "enabled": true,
             "optional": true,
-            "active": true
+            "active": false
         }
     }
 }
