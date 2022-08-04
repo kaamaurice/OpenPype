@@ -59,32 +59,8 @@
         {
             "type": "dict",
             "collapsible": true,
-            "key": "ValidateLinkedVersion",
-            "label": "Validate Linked Version",
-            "checkbox_key": "enabled",
-            "children": [
-                {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
-                },
-                {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
-                },
-                {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
-                }
-            ]
-        },
-        {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ValidateLinkedData",
-            "label": "Validate Linked Data",
+            "key": "ValidateAssetsVersion",
+            "label": "Validate Assets Version",
             "checkbox_key": "enabled",
             "children": [
                 {

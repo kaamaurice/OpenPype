@@ -14,12 +14,7 @@
             "optional": false,
             "active": true
         },
-        "ValidateLinkedVersion": {
-            "enabled": true,
-            "optional": true,
-            "active": true
-        },
-        "ValidateLinkedData": {
+        "ValidateAssetsVersion": {
             "enabled": true,
             "optional": true,
             "active": true
