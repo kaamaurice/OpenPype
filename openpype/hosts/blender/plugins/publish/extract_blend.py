@@ -4,11 +4,7 @@ import bpy
 from bson.objectid import ObjectId
 
 import openpype.api
-from openpype.pipeline import (
-    legacy_io,
-    discover_loader_plugins,
-    AVALON_CONTAINER_ID,
-)
+from openpype.pipeline import discover_loader_plugins, AVALON_CONTAINER_ID
 from openpype.pipeline.load.utils import loaders_from_repre_context
 from openpype.hosts.blender.api import plugin
 from openpype.hosts.blender.api.pipeline import (
@@ -24,6 +20,8 @@ class ExtractBlend(openpype.api.Extractor):
     hosts = ["blender"]
     families = ["model", "camera", "rig", "action", "layout", "setdress"]
     optional = True
+
+    pack_images = True
 
     def _get_loader_from_instance(self, instance):
         all_loaders = discover_loader_plugins()
@@ -70,18 +68,6 @@ class ExtractBlend(openpype.api.Extractor):
         stagingdir = self.staging_dir(instance)
         filename = f"{instance.name}.blend"
         filepath = os.path.join(stagingdir, filename)
-
-        # Get project settings
-        project_settings = openpype.api.get_project_settings(
-            legacy_io.Session["AVALON_PROJECT"]
-        )
-        pack_images = (
-            project_settings
-            ["blender"]
-            ["publish"]
-            ["ExtractBlend"]
-            ["pack_images"]
-        )
 
         # Perform extraction
         self.log.info("Performing extraction..")
@@ -131,7 +117,7 @@ class ExtractBlend(openpype.api.Extractor):
         )
 
         # Pack used images in the blend files.
-        if pack_images:
+        if self.pack_images:
             self._pack_images_from_objects(objects)
 
         bpy.ops.file.make_paths_absolute()

@@ -16,7 +16,7 @@ import openpype.api
 class ExtractLayout(openpype.api.Extractor):
     """Extract layout as json."""
 
-    label = "Extract Layout"
+    label = "Extract JSON Layout"
     hosts = ["blender"]
     families = ["layout"]
     optional = True

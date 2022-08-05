@@ -9,74 +9,36 @@
             "label": "Validators"
         },
         {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ValidateMeshHasUvs",
-            "label": "Validate Mesh Has UVs",
-            "checkbox_key": "enabled",
-            "children": [
+            "type": "schema_template",
+            "name": "template_publish_plugin",
+            "template_data": [
                 {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
-                },
-                {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
-                },
-                {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
+                    "key": "ValidateAssetsVersion",
+                    "label": "Validate Assets Version"
                 }
             ]
         },
         {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ValidateTransformZero",
-            "label": "Validate Transform Zero",
-            "checkbox_key": "enabled",
+            "type": "collapsible-wrap",
+            "label": "Model",
             "children": [
                 {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
+                    "type": "label",
+                    "label": "Validators"
                 },
                 {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
-                },
-                {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
-                }
-            ]
-        },
-        {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ValidateAssetsVersion",
-            "label": "Validate Assets Version",
-            "checkbox_key": "enabled",
-            "children": [
-                {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
-                },
-                {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
-                },
-                {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
+                    "type": "schema_template",
+                    "name": "template_publish_plugin",
+                    "template_data": [
+                        {
+                            "key": "ValidateMeshHasUvs",
+                            "label": "Validate Mesh Has UVs"
+                        },
+                        {
+                            "key": "ValidateTransformZero",
+                            "label": "Validate Transform Zero"
+                        }
+                    ]
                 }
             ]
         },
@@ -113,54 +75,12 @@
                     "type": "boolean",
                     "key": "pack_images",
                     "label": "Pack Images"
-                }
-            ]
-        },
-        {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ExtractBlendAnimation",
-            "label": "Extract Blend Animation",
-            "checkbox_key": "enabled",
-            "children": [
-                {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
                 },
                 {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
-                },
-                {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
-                }
-            ]
-        },
-        {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ExtractCamera",
-            "label": "Extract Camera as FBX",
-            "checkbox_key": "enabled",
-            "children": [
-                {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
-                },
-                {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
-                },
-                {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
+                    "key": "families",
+                    "label": "Families",
+                    "type": "list",
+                    "object_type": "text"
                 }
             ]
         },
@@ -197,74 +117,28 @@
             ]
         },
         {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ExtractAnimationFBX",
-            "label": "Extract Animation FBX",
-            "checkbox_key": "enabled",
-            "children": [
+            "type": "schema_template",
+            "name": "template_publish_plugin",
+            "template_data": [
                 {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
+                    "key": "ExtractABC",
+                    "label": "Extract ABC (model and pointcache)"
                 },
                 {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
+                    "key": "ExtractBlendAnimation",
+                    "label": "Extract Animation as Blend"
                 },
                 {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
-                }
-            ]
-        },
-        {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ExtractABC",
-            "label": "Extract ABC (model and pointcache)",
-            "checkbox_key": "enabled",
-            "children": [
-                {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
+                    "key": "ExtractAnimationFBX",
+                    "label": "Extract Animation as FBX"
                 },
                 {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
+                    "key": "ExtractCamera",
+                    "label": "Extract FBX Camera as FBX"
                 },
                 {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
-                }
-            ]
-        },
-        {
-            "type": "dict",
-            "collapsible": true,
-            "key": "ExtractLayout",
-            "label": "Extract Layout as JSON",
-            "checkbox_key": "enabled",
-            "children": [
-                {
-                    "type": "boolean",
-                    "key": "enabled",
-                    "label": "Enabled"
-                },
-                {
-                    "type": "boolean",
-                    "key": "optional",
-                    "label": "Optional"
-                },
-                {
-                    "type": "boolean",
-                    "key": "active",
-                    "label": "Active"
+                    "key": "ExtractLayout",
+                    "label": "Extract Layout as JSON"
                 }
             ]
         }

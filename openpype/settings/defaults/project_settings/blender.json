@@ -3,6 +3,14 @@
         "create_first_version": false,
         "custom_templates": []
     },
+    "load": {
+        "LayoutLoader": {
+            "animation_instance_mode": "global"
+        },
+        "FbxModelLoader": {
+            "scale_length": 0
+        }
+    },
     "publish": {
         "ValidateMeshHasUvs": {
             "enabled": true,
@@ -23,7 +31,15 @@
             "enabled": true,
             "optional": true,
             "active": true,
-            "pack_images": true
+            "pack_images": true,
+            "families": [
+                "model",
+                "camera",
+                "rig",
+                "action",
+                "layout",
+                "setdress"
+            ]
         },
         "ExtractBlendAnimation": {
             "enabled": true,
