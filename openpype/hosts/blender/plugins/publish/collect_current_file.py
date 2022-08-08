@@ -6,12 +6,27 @@ from openpype.pipeline import legacy_io
 from openpype.hosts.blender.api import workio
 
 
+class SaveWorkfiledAction(pyblish.api.Action):
+    """Save Workfile."""
+    label = "Save Workfile"
+    on = "failed"
+    icon = "save"
+
+    def process(self, context, plugin):
+        current_file = workio.current_file()
+        if current_file:
+            workio.save_file(current_file)
+        else:
+            bpy.ops.wm.avalon_workfiles()
+        
+
 class CollectBlenderCurrentFile(pyblish.api.ContextPlugin):
     """Inject the current working file into context"""
 
     order = pyblish.api.CollectorOrder - 0.5
     label = "Blender Current File"
     hosts = ["blender"]
+    actions = [SaveWorkfiledAction]
 
     def process(self, context):
         """Inject the current working file"""
