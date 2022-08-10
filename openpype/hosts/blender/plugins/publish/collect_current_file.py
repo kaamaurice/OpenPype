@@ -18,7 +18,7 @@ class SaveWorkfiledAction(pyblish.api.Action):
             workio.save_file(current_file)
         else:
             bpy.ops.wm.avalon_workfiles()
-        
+
 
 class CollectBlenderCurrentFile(pyblish.api.ContextPlugin):
     """Inject the current working file into context"""
