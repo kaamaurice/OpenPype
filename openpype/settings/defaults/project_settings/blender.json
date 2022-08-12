@@ -5,7 +5,8 @@
     },
     "load": {
         "LayoutLoader": {
-            "animation_instance_mode": "global"
+            "animation_instance_mode": "global",
+            "animation_instance_link": "collection"
         },
         "FbxModelLoader": {
             "scale_length": 0
