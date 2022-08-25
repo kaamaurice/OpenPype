@@ -3,22 +3,24 @@ from typing import List
 import bpy
 
 import pyblish.api
+import openpype.api
 import openpype.hosts.blender.api.action
 
 
 class ValidateMeshNoNegativeScale(pyblish.api.Validator):
     """Ensure that meshes don't have a negative scale."""
 
-    order = pyblish.api.ValidatorOrder
+    order = openpype.api.ValidateContentsOrder
     hosts = ["blender"]
     families = ["model"]
+    category = "geometry"
     label = "Mesh No Negative Scale"
     actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance) -> List:
         invalid = []
-        for obj in set(instance):
+        for obj in instance:
             if isinstance(obj, bpy.types.Object) and obj.type == 'MESH':
                 if any(v < 0 for v in obj.scale):
                     invalid.append(obj)

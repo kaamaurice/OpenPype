@@ -1,10 +1,9 @@
 from typing import List
 
-import mathutils
-
 import bpy
 
 import pyblish.api
+import openpype.api
 import openpype.hosts.blender.api.action
 
 
@@ -19,17 +18,14 @@ class ValidateCameraZeroKeyframe(pyblish.api.InstancePlugin):
     order = openpype.api.ValidateContentsOrder
     hosts = ["blender"]
     families = ["camera"]
-    category = "geometry"
     version = (0, 1, 0)
     label = "Zero Keyframe"
     actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
 
-    _identity = mathutils.Matrix()
-
-    @classmethod
-    def get_invalid(cls, instance) -> List:
+    @staticmethod
+    def get_invalid(instance) -> List:
         invalid = []
-        for obj in set(instance):
+        for obj in instance:
             if isinstance(obj, bpy.types.Object) and obj.type == "CAMERA":
                 if obj.animation_data and obj.animation_data.action:
                     action = obj.animation_data.action
@@ -47,4 +43,5 @@ class ValidateCameraZeroKeyframe(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise RuntimeError(
-                f"Camera must have a keyframe at frame 0: {invalid}")
+                f"Camera must have a keyframe at frame 0: {invalid}"
+            )

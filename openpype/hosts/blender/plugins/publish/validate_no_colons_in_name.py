@@ -3,6 +3,7 @@ from typing import List
 import bpy
 
 import pyblish.api
+import openpype.api
 import openpype.hosts.blender.api.action
 
 
@@ -24,7 +25,7 @@ class ValidateNoColonsInName(pyblish.api.InstancePlugin):
     @staticmethod
     def get_invalid(instance) -> List:
         invalid = []
-        for obj in set(instance):
+        for obj in instance:
             if ':' in obj.name:
                 invalid.append(obj)
             if isinstance(obj, bpy.types.Object) and obj.type == 'ARMATURE':
@@ -38,4 +39,5 @@ class ValidateNoColonsInName(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise RuntimeError(
-                f"Objects found with colon in name: {invalid}")
+                f"Objects found with colon in name: {invalid}"
+            )

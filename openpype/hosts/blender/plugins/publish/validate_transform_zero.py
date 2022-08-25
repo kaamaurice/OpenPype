@@ -1,10 +1,10 @@
 from typing import List
 
 import mathutils
-
 import bpy
 
 import pyblish.api
+import openpype.api
 import openpype.hosts.blender.api.action
 
 
@@ -20,7 +20,6 @@ class ValidateTransformZero(pyblish.api.InstancePlugin):
     order = openpype.api.ValidateContentsOrder
     hosts = ["blender"]
     families = ["model"]
-    category = "geometry"
     version = (0, 1, 0)
     label = "Transform Zero"
     actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
@@ -30,7 +29,7 @@ class ValidateTransformZero(pyblish.api.InstancePlugin):
     @classmethod
     def get_invalid(cls, instance) -> List:
         invalid = []
-        for obj in set(instance):
+        for obj in instance:
             if (
                 isinstance(obj, bpy.types.Object)
                 and obj.matrix_basis != cls._identity
