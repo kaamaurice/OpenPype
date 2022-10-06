@@ -1,13 +1,13 @@
 """Load audio in Blender."""
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple, Union
 
 import bpy
 
-from openpype.pipeline import get_representation_path
 from openpype.hosts.blender.api import plugin
 from openpype.hosts.blender.api.pipeline import AVALON_PROPERTY
+from openpype.pipeline.load.utils import get_representation_path
 
 
 class AudioLoader(plugin.AssetLoader):
@@ -36,7 +36,7 @@ class AudioLoader(plugin.AssetLoader):
 
         # We deselect all sequencer strips, and then select the one we
         # need to remove.
-        bpy.ops.sequencer.select_all(context, action='DESELECT')
+        bpy.ops.sequencer.select_all(context, action="DESELECT")
         bpy.context.scene.sequence_editor.sequences_all[audio].select = True
 
         bpy.ops.sequencer.delete(context)
@@ -79,17 +79,19 @@ class AudioLoader(plugin.AssetLoader):
 
         return asset_group
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(
+        self, container: Dict, representation: Dict
+    ) -> Tuple[Union[bpy.types.Collection, bpy.types.Object]]:
         """Update the loaded asset"""
+        # Remove audio datablock
+        libpath = get_representation_path(representation)
+        self._remove_audio(libpath.name)
 
-        self._remove_audio(container["audio"])
+        asset_group = super().exec_update(container, representation)
 
-        asset_group = self._update_process(container, representation)
-
-        libpath = Path(get_representation_path(representation))
-        asset_group[AVALON_PROPERTY]["audio"] = libpath.name
+        return asset_group
 
     def exec_remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene."""
-        self._remove_audio(container["audio"])
+        self._remove_audio(Path(container["libpath"]).name)
         return super().exec_remove(container)

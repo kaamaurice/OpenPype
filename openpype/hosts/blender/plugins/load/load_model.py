@@ -1,6 +1,6 @@
 """Load a model asset in Blender."""
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Tuple, Union
 
 import bpy
 
@@ -84,7 +84,7 @@ class InstanceModelLoader(plugin.AssetLoader):
         context: dict,
         name: str,
         namespace: Optional[str] = None,
-        options: Optional[Dict] = None
+        options: Optional[Dict] = None,
     ) -> Union[bpy.types.Object, bpy.types.Collection]:
         """
         Arguments:
@@ -114,12 +114,14 @@ class InstanceModelLoader(plugin.AssetLoader):
 
         return asset_group
 
-    def exec_switch(self, container: Dict, representation: Dict):
+    def exec_switch(
+        self, container: Dict, representation: Dict
+    ) -> Tuple[Union[bpy.types.Collection, bpy.types.Object]]:
         """Switch the asset using update"""
         if container["loader"] != "InstanceModelLoader":
             raise NotImplementedError("Not implemented yet")
 
-        asset_group = self._update_process(container, representation)
+        asset_group = self.exec_update(container, representation)
 
         # Update namespace if needed
 
