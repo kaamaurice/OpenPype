@@ -1,6 +1,6 @@
 """Load and assign extracted materials from look task."""
 
-from typing import Dict
+from typing import Dict, Tuple, Union
 
 import bpy
 
@@ -96,3 +96,55 @@ class MaterialLookLoader(plugin.AssetLoader):
         plugin.orphans_purge()
 
         return True
+
+    def exec_update(
+        self, container: Dict, representation: Dict
+    ) -> Tuple[str, Union[bpy.types.Collection, bpy.types.Object]]:
+        # Get objects using look materials
+        mat_slots = set()
+        asset_group = self._get_asset_group_container(container)
+        for obj in bpy.data.objects:
+            mat_slots.update(
+                {
+                    slot
+                    for slot in obj.material_slots
+                    if slot.material.library
+                    and slot.material.library.filepath == container["libpath"]
+                }
+            )
+
+        # Remove material from slots and
+        # determine if single material
+        material_names = []
+        single_material = True
+        for slot in mat_slots:
+            if list(mat_slots)[0].material != slot.material:
+                single_material = False
+
+            material_names.append((slot, slot.material.name))
+            slot.material = None
+
+        # Execute update
+        asset_group = super().exec_update(container, representation)
+
+        # Reassign slots with changed new material only if one material on both sides
+        new_materials = [
+            mat
+            for mat in bpy.data.materials
+            if mat.library
+            and mat.library.filepath == asset_group["avalon"]["libpath"]
+        ]
+        if single_material and len(new_materials) == 1:
+            for slot in mat_slots:
+                slot.material = new_materials[0]
+            return
+
+        # Reassign slots by name
+        for slot, material_name in material_names:
+            new_material = bpy.data.materials.get(material_name)
+            if new_material:
+                slot.material = new_material
+            else:
+                print(
+                    f"WARNING|Slot {slot}: no matched material with name '{material_name}'. Slot left empty."
+                )
