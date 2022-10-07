@@ -1360,7 +1360,13 @@ class AssetLoader(LoaderPlugin):
         # Update the asset group with maintained contexts.
         with self.update_maintainer(asset_group, self.maintained_parameters):
 
+            # Remove collection holding objects
             remove_container(asset_group, content_only=True)
+
+            # Remove library if linked
+            linked_library = bpy.data.libraries.get(Path(asset_group['avalon']['libpath']).name)
+            if linked_library:
+                bpy.data.libraries.remove(linked_library)
 
             self._process(libpath, asset_group)
 
