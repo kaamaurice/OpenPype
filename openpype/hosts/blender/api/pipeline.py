@@ -165,6 +165,8 @@ def _on_load_post(*args):
         emit_event("new")
 
     ops.OpenFileCacher.post_load()
+    
+    print("_on_load_post")
 
 
 def _register_callbacks():
