@@ -16,7 +16,10 @@ import bpy
 import bpy.utils.previews
 
 from openpype import style
+from openpype.client.entities import get_subset_by_id, get_version_by_id
+from openpype.hosts.blender.api.lib import ls
 from openpype.pipeline import legacy_io
+from openpype.pipeline.constants import AVALON_INSTANCE_ID
 from openpype.tools.utils import host_tools
 
 from .workio import OpenFileCacher
@@ -396,6 +399,63 @@ def draw_avalon_menu(self, context):
     self.layout.menu(TOPBAR_MT_avalon.bl_idname)
 
 
+class SCENE_OT_MakeContainerPublishable(bpy.types.Operator):
+    bl_idname = "scene.simple"
+    bl_label = "Simple Modal Operator"
+
+    scene_containers: bpy.props.CollectionProperty(
+        name="Scene OpenPype Containers", type=bpy.types.PropertyGroup
+    )
+    container_name: bpy.props.StringProperty(
+        name="Container to make publishable"
+    )
+
+    # NOTE cannot use AVALON_PROPERTY because of circular dependency
+    # and the refactor is very big, but must be done soon
+
+    def __init__(self) -> None:
+        for container in ls():
+            sc_container = self.scene_containers.add()
+            sc_container.name = container["objectName"]
+            sc_container["avalon"] = container
+
+    def invoke(self, context, _event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.prop_search(self, "container_name", self, "scene_containers")
+
+    def execute(self, context):
+        if not self.container_name:
+            self.report({"WARNING"}, "No container to make publishable...")
+            return {"CANCELLED"}
+
+        # Recover required data
+        avalon_data = self.scene_containers.get(self.container_name).get(
+            "avalon"
+        )
+        project_name = legacy_io.current_project()
+        version_doc = get_version_by_id(project_name, avalon_data["parent"])
+        subset_doc = get_subset_by_id(project_name, version_doc["parent"])
+        
+        # Build and update metadata
+        metadata = {
+            "id": AVALON_INSTANCE_ID,
+            "family": avalon_data["family"],
+            "asset": avalon_data["asset_name"],
+            "subset": subset_doc["name"],
+            "task": legacy_io.Session.get("AVALON_TASK"),
+            "active": True,
+        }
+        container_collection = context.scene.collection.children.get(
+            self.container_name
+        )
+        container_collection["avalon"] = metadata
+        return {"FINISHED"}
+
+
 classes = [
     LaunchCreator,
     LaunchLoader,
@@ -404,6 +464,7 @@ classes = [
     LaunchLibrary,
     LaunchWorkFiles,
     TOPBAR_MT_avalon,
+    SCENE_OT_MakeContainerPublishable,
 ]
 
 
