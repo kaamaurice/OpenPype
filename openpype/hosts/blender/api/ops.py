@@ -400,8 +400,8 @@ def draw_avalon_menu(self, context):
 
 
 class SCENE_OT_MakeContainerPublishable(bpy.types.Operator):
-    bl_idname = "scene.simple"
-    bl_label = "Simple Modal Operator"
+    bl_idname = "scene.make_container_publishable"
+    bl_label = "Make Container Publishable"
 
     scene_containers: bpy.props.CollectionProperty(
         name="Scene OpenPype Containers", type=bpy.types.PropertyGroup
