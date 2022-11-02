@@ -400,6 +400,7 @@ def draw_avalon_menu(self, context):
 
 
 class SCENE_OT_MakeContainerPublishable(bpy.types.Operator):
+    """Convert loaded container to a publishable one"""
     bl_idname = "scene.make_container_publishable"
     bl_label = "Make Container Publishable"
 
@@ -413,19 +414,11 @@ class SCENE_OT_MakeContainerPublishable(bpy.types.Operator):
     # NOTE cannot use AVALON_PROPERTY because of circular dependency
     # and the refactor is very big, but must be done soon
 
-    def __init__(self) -> None:
-        for container in ls():
-            sc_container = self.scene_containers.add()
-            sc_container.name = container["objectName"]
-            sc_container["avalon"] = container
-
-    def invoke(self, context, _event):
-        wm = context.window_manager
-        return wm.invoke_props_dialog(self)
-
-    def draw(self, _context):
-        layout = self.layout
-        layout.prop_search(self, "container_name", self, "scene_containers")
+    @classmethod
+    def poll(cls, context):
+        # Check selected collection is in loaded containers
+        if context.collection is not context.scene.collection:
+            return context.collection.name in {container["objectName"] for container in ls()}
 
     def execute(self, context):
         if not self.container_name:
@@ -433,7 +426,7 @@ class SCENE_OT_MakeContainerPublishable(bpy.types.Operator):
             return {"CANCELLED"}
 
         # Recover required data
-        avalon_data = self.scene_containers.get(self.container_name).get(
+        avalon_data = bpy.data.collections.get(self.container_name).get(
             "avalon"
         )
         project_name = legacy_io.current_project()
@@ -454,6 +447,18 @@ class SCENE_OT_MakeContainerPublishable(bpy.types.Operator):
         )
         container_collection["avalon"] = metadata
         return {"FINISHED"}
+
+
+def draw_op_collection_menu(self, context):
+    """Draw OpenPype collection context menu.
+
+    Args:
+        context (bpy.types.Context): Current Blender Context
+    """
+    layout = self.layout
+    layout.separator()
+    op = layout.operator(SCENE_OT_MakeContainerPublishable.bl_idname, text=SCENE_OT_MakeContainerPublishable.bl_label)
+    op.container_name = context.collection.name
 
 
 classes = [
@@ -479,6 +484,10 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_editor_menus.append(draw_avalon_menu)
+
+    # Add make_container_publishable to collection and outliner menus
+    bpy.types.OUTLINER_MT_collection.append(draw_op_collection_menu)
+    bpy.types.OUTLINER_MT_context_menu.append(draw_op_collection_menu)
 
 
 def unregister():
