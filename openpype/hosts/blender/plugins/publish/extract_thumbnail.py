@@ -109,7 +109,8 @@ class ExtractThumbnail(openpype.api.Extractor):
         with maintained_time():
             path = capture(**preset)
 
-        thumbnail = os.path.basename(self._fix_output_path(path))
+        thumbnail = self._output_path(path)
+        ext = os.path.splitext(thumbnail)[1].lstrip(".")
 
         self.log.info(f"thumbnail: {thumbnail}")
 
@@ -123,7 +124,7 @@ class ExtractThumbnail(openpype.api.Extractor):
 
         representation = {
             "name": "thumbnail",
-            "ext": "jpg",
+            "ext": ext,
             "files": thumbnail,
             "stagingDir": stagingdir,
             "thumbnail": True,
@@ -131,7 +132,7 @@ class ExtractThumbnail(openpype.api.Extractor):
         }
         instance.data["representations"].append(representation)
 
-    def _fix_output_path(self, filepath):
+    def _output_path(self, filepath):
         """Workaround to return correct filepath.
 
         To workaround this we just glob.glob() for any file extensions and
@@ -147,10 +148,11 @@ class ExtractThumbnail(openpype.api.Extractor):
             return None
 
         if not os.path.exists(filepath):
-            files = glob.glob(f"{filepath}.*.jpg")
+            filepath, ext = os.path.splitext(filepath)
+            files = glob.glob(f"{filepath}.*{ext}")
 
             if not files:
                 raise RuntimeError(f"Couldn't find playblast from: {filepath}")
             filepath = max(files, key=os.path.getmtime)
 
-        return filepath
+        return os.path.basename(filepath)

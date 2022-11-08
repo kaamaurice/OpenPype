@@ -3,6 +3,7 @@
 Playblasting with independent viewport, camera and display options
 
 """
+import os
 import contextlib
 import bpy
 
@@ -76,14 +77,16 @@ def capture(
     frame_range = (start_frame, end_frame, step_frame)
 
     if filename is None:
-        filename = scene.render.filepath
+        filename = os.path.splitext(scene.render.filepath)[0]
 
     render_options = {
-        "filepath": "{}.".format(filename.rstrip(".")),
+        "filepath": filename.lstrip(".") + ".",
         "resolution_x": width,
         "resolution_y": height,
         "use_overwrite": overwrite,
     }
+
+    image_settings = image_settings or ImageSettings.copy()
 
     with contextlib.ExitStack() as stack:
         stack.enter_context(maintained_time())
@@ -107,7 +110,7 @@ def capture(
                 view_context=True,
             )
 
-    return filename
+    return filename + get_extension(image_settings)
 
 
 ImageSettings = {
@@ -122,6 +125,42 @@ ImageSettings = {
         "use_max_b_frames": False,
     },
 }
+
+FILE_EXTENSIONS = {
+    "JPEG": ".jpg",
+    "JPEG2000": ".jpg",
+    "TARGA": ".tga",
+    "TARGA_RAW": ".tga",
+    "OPEN_EXR": ".exr",
+    "OPEN_EXR_MULTILAYER": ".exr",
+    "AVI_JPEG": ".avi",
+    "AVI_RAW": ".avi",
+    "FFMPEG": {
+        "QUICKTIME": ".mov",
+        "MPEG4": ".mp4",
+        "MPEG2": ".mpg",
+        "MPEG1": ".mpg",
+        "FLASH": ".flv",
+    },
+}
+
+def get_extension(image_settings):
+    file_format = image_settings.get("file_format")
+
+    if file_format == "FFMPEG":
+        if image_settings.get("ffmpeg"):
+            ffmpeg_format = image_settings.get("format")
+            if ffmpeg_format in FILE_EXTENSIONS["FFMPEG"]:
+                return FILE_EXTENSIONS["FFMPEG"][ffmpeg_format]
+            if ffmpeg_format:
+                return "." + ffmpeg_format.lower()
+
+    elif file_format in FILE_EXTENSIONS:
+        return FILE_EXTENSIONS[file_format]
+    elif file_format:
+        return "." + file_format.lower()
+
+    return ""
 
 
 def isolate_objects(window, objects, focus=None):
@@ -230,7 +269,6 @@ def applied_render_options(window, options):
 def applied_image_settings(window, options):
     """Context manager to override image settings."""
 
-    options = options or ImageSettings.copy()
     ffmpeg = options.pop("ffmpeg", {})
     render = window.scene.render
 

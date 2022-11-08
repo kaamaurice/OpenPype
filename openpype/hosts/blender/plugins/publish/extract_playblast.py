@@ -98,13 +98,14 @@ class ExtractPlayblast(openpype.api.Extractor):
             path = capture(**preset)
 
         self.log.debug(f"playblast path {path}")
+        ext = os.path.splitext(path)[1].lstrip(".")
 
         # if only one frame
         if end == start:
             files = next(
                 (
                     frame for frame in os.listdir(stagingdir)
-                    if frame.endswith(".png")
+                    if frame.startswith(filename) and frame.endswith(ext)
                 ),
                 None
             )
@@ -116,7 +117,7 @@ class ExtractPlayblast(openpype.api.Extractor):
             collected_files = os.listdir(stagingdir)
             collections, _ = clique.assemble(
                 collected_files,
-                patterns=[f"{filename}\\.{clique.DIGITS_PATTERN}\\.png$"],
+                patterns=[f"{filename}\\.{clique.DIGITS_PATTERN}\\.{ext}$"],
             )
 
             if len(collections) > 1:
@@ -130,7 +131,7 @@ class ExtractPlayblast(openpype.api.Extractor):
                 )
 
             frame_collection = collections[0]
-            self.log.info(f"We found collection of interest {frame_collection}")
+            self.log.info(f"Found collection of interest {frame_collection}")
             files = list(frame_collection)
 
         instance.data.setdefault("representations", [])
@@ -140,8 +141,8 @@ class ExtractPlayblast(openpype.api.Extractor):
             tags.append("delete")
 
         representation = {
-            "name": "png",
-            "ext": "png",
+            "name": ext,
+            "ext": ext,
             "files": files,
             "stagingDir": stagingdir,
             "frameStart": start,
