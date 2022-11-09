@@ -363,15 +363,20 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 for f in files_to_clean:
                     os.unlink(f)
 
+            # force update extension from representation
+            output_ext = new_repre.get("ext")
+
             new_repre.update({
                 "fps": temp_data["fps"],
-                "name": "{}_{}".format(output_name, output_ext),
                 "outputName": output_name,
                 "outputDef": output_def,
                 "frameStartFtrack": temp_data["output_frame_start"],
                 "frameEndFtrack": temp_data["output_frame_end"],
                 "ffmpeg_cmd": subprcs_cmd
             })
+            new_repre["name"] = output_def.get(
+                "repre_name", "{outputName}_{ext}"
+            ).format(**new_repre)
 
             # Force to pop these key if are in new repre
             new_repre.pop("preview", None)

@@ -54,6 +54,7 @@
                     "hosts": [],
                     "outputs": {
                         "h264": {
+                            "repre_name": "{outputName}_{ext}",
                             "ext": "mp4",
                             "tags": [
                                 "burnin",

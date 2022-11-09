@@ -220,6 +220,12 @@
                                     "type": "dict",
                                     "children": [
                                         {
+                                            "key": "repre_name",
+                                            "label": "Output representation",
+                                            "type": "text",
+                                            "tooltip": "Template name of output representation. Default to '{outputName}_{ext}'"
+                                        },
+                                        {
                                             "key": "ext",
                                             "label": "Output extension",
                                             "type": "text"
