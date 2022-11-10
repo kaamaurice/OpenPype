@@ -3,7 +3,7 @@
 Playblasting with independent viewport, camera and display options
 
 """
-import os
+from pathlib import Path
 import contextlib
 import bpy
 
@@ -15,7 +15,7 @@ def capture(
     camera=None,
     width=None,
     height=None,
-    filename=None,
+    filepath=None,
     start_frame=None,
     end_frame=None,
     step_frame=None,
@@ -33,7 +33,7 @@ def capture(
         camera (str, optional): Name of camera, defaults to "Camera"
         width (int, optional): Width of output in pixels
         height (int, optional): Height of output in pixels
-        filename (str, optional): Name of output file path. Defaults to current
+        filepath (str, optional): Name of output file path. Defaults to current
             render output path.
         start_frame (int, optional): Defaults to current start frame.
         end_frame (int, optional): Defaults to current end frame.
@@ -56,7 +56,7 @@ def capture(
 
     # Ensure camera exists.
     if camera not in scene.objects and camera != "AUTO":
-        raise RuntimeError("Camera does not exist: {0}".format(camera))
+        raise RuntimeError(f"Camera does not exist: {camera}")
 
     # Ensure resolution.
     if width and height:
@@ -76,11 +76,16 @@ def capture(
         step_frame = 1
     frame_range = (start_frame, end_frame, step_frame)
 
-    if filename is None:
-        filename = os.path.splitext(scene.render.filepath)[0]
+    if filepath is None:
+        filepath = scene.render.filepath
+
+    filepath = Path(filepath)
+    if filepath.suffix:
+        filepath = filepath.parent.joinpath(filepath.stem)
+
 
     render_options = {
-        "filepath": filename.lstrip(".") + ".",
+        "filepath": f"{filepath}.",
         "resolution_x": width,
         "resolution_y": height,
         "use_overwrite": overwrite,
@@ -110,7 +115,7 @@ def capture(
                 view_context=True,
             )
 
-    return filename + get_extension(image_settings)
+    return str(filepath) + get_extension_from_image_settings(image_settings)
 
 
 ImageSettings = {
@@ -135,7 +140,7 @@ FILE_EXTENSIONS = {
     "OPEN_EXR_MULTILAYER": ".exr",
     "AVI_JPEG": ".avi",
     "AVI_RAW": ".avi",
-    "FFMPEG": {
+    "FFMcPEG": {
         "QUICKTIME": ".mov",
         "MPEG4": ".mp4",
         "MPEG2": ".mpg",
@@ -144,7 +149,16 @@ FILE_EXTENSIONS = {
     },
 }
 
-def get_extension(image_settings):
+def get_extension_from_image_settings(image_settings):
+    """Get the extension output from the preset image settings based on
+    file format and ffmpeg format.
+
+    Args:
+        image_settings (dict): The image settings
+
+    Returns:
+        str: The extension.
+    """
     file_format = image_settings.get("file_format")
 
     if file_format == "FFMPEG":

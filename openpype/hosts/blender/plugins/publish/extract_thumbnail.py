@@ -1,13 +1,14 @@
 import os
+from pathlib import Path
 import glob
+
+import bpy
 
 import pyblish.api
 import openpype.api
 from openpype.hosts.blender.api import capture
 from openpype.hosts.blender.api.lib import maintained_time
 from openpype.hosts.blender.api.plugin import get_children_recursive
-
-import bpy
 
 
 class ExtractThumbnail(openpype.api.Extractor):
@@ -74,7 +75,7 @@ class ExtractThumbnail(openpype.api.Extractor):
                 "camera": camera,
                 "start_frame": start,
                 "end_frame": start,
-                "filename": path,
+                "filepath": path,
                 "overwrite": True,
                 "isolate": isolate,
                 "focus": focus,
@@ -110,7 +111,7 @@ class ExtractThumbnail(openpype.api.Extractor):
             path = capture(**preset)
 
         thumbnail = self._output_path(path)
-        ext = os.path.splitext(thumbnail)[1].lstrip(".")
+        ext = Path(thumbnail).suffix.lstrip(".")
 
         self.log.info(f"thumbnail: {thumbnail}")
 

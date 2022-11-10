@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import clique
 
 import bpy
@@ -12,8 +13,7 @@ from openpype.hosts.blender.api.lib import maintained_time
 class ExtractPlayblast(openpype.api.Extractor):
     """Extract viewport playblast.
 
-    Takes review camera and creates review Quicktime video based on viewport
-    capture.
+    Takes review camera and creates review based on viewport capture.
 
     """
 
@@ -62,7 +62,7 @@ class ExtractPlayblast(openpype.api.Extractor):
                 "camera": camera,
                 "start_frame": start,
                 "end_frame": end,
-                "filename": path,
+                "filepath": path,
                 "overwrite": True,
                 "isolate": isolate,
             }
@@ -98,7 +98,7 @@ class ExtractPlayblast(openpype.api.Extractor):
             path = capture(**preset)
 
         self.log.debug(f"playblast path {path}")
-        ext = os.path.splitext(path)[1].lstrip(".")
+        ext = Path(path).suffix.lstrip(".")
 
         # if only one frame
         if end == start:
