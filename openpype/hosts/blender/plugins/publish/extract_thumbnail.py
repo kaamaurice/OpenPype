@@ -110,10 +110,9 @@ class ExtractThumbnail(openpype.api.Extractor):
         with maintained_time():
             path = capture(**preset)
 
-        thumbnail = self._output_path(path)
-        ext = Path(thumbnail).suffix.lstrip(".")
+        thumbnail_path = self._output_path(path)
 
-        self.log.info(f"thumbnail: {thumbnail}")
+        self.log.info(f"thumbnail: {thumbnail_path}")
 
         instance.data.setdefault("representations", [])
 
@@ -125,8 +124,8 @@ class ExtractThumbnail(openpype.api.Extractor):
 
         representation = {
             "name": "thumbnail",
-            "ext": ext,
-            "files": thumbnail,
+            "ext": thumbnail_path.suffix.lstrip("."),
+            "files": thumbnail_path.name,
             "stagingDir": stagingdir,
             "thumbnail": True,
             "tags": tags,
@@ -136,9 +135,14 @@ class ExtractThumbnail(openpype.api.Extractor):
     def _output_path(self, filepath):
         """Workaround to return correct filepath.
 
-        To workaround this we just glob.glob() for any file extensions and
+        To workaround this we just glob() for any file extensions and
         assume the latest modified file is the correct file and return it.
 
+        Args:
+            filepath (str): The playblast output filepath.
+
+        Returns:
+            Path: The correct filepath.
         """
         # Catch cancelled playblast
         if filepath is None:
@@ -148,12 +152,13 @@ class ExtractThumbnail(openpype.api.Extractor):
             )
             return None
 
-        if not os.path.exists(filepath):
-            filepath, ext = os.path.splitext(filepath)
-            files = glob.glob(f"{filepath}.*{ext}")
+        filepath = Path(filepath)
+
+        if not filepath.exists():
+            files = filepath.parent.glob(f"{filepath.stem}.*{filepath.suffix}")
 
             if not files:
                 raise RuntimeError(f"Couldn't find playblast from: {filepath}")
             filepath = max(files, key=os.path.getmtime)
 
-        return os.path.basename(filepath)
+        return filepath
