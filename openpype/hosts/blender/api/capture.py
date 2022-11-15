@@ -83,7 +83,6 @@ def capture(
     if filepath.suffix:
         filepath = filepath.parent.joinpath(filepath.stem)
 
-
     render_options = {
         "filepath": f"{filepath}.",
         "resolution_x": width,
@@ -115,7 +114,9 @@ def capture(
                 view_context=True,
             )
 
-    return str(filepath) + get_extension_from_image_settings(image_settings)
+    return filepath.with_suffix(
+        get_extension_from_image_settings(image_settings)
+    ).as_posix()
 
 
 ImageSettings = {

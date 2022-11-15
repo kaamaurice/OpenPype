@@ -98,7 +98,7 @@ class ExtractPlayblast(openpype.api.Extractor):
             path = capture(**preset)
 
         self.log.debug(f"playblast path {path}")
-        ext = Path(path).suffix.lstrip(".")
+        ext = Path(path).suffix[1:]
 
         # if only one frame
         if end == start:
