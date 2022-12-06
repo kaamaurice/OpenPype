@@ -236,9 +236,10 @@ class LinkLayoutLoader(LayoutLoader):
     icon = "link"
     order = 0
 
-    def _process(self, libpath, asset_group):
-        self._link_blend(libpath, asset_group)
-        self._make_local_actions(asset_group)
+    def _load_process(self, libpath, container_name):
+        container_collection = self._link_blend(libpath, container_name)
+        self._make_local_actions(container_collection)
+        return container_collection
 
 
 class AppendLayoutLoader(LayoutLoader):
@@ -251,6 +252,7 @@ class AppendLayoutLoader(LayoutLoader):
     icon = "paperclip"
     order = 2
 
-    def _process(self, libpath, asset_group):
-        self._append_blend(libpath, asset_group)
-        self._make_local_actions(asset_group)
+    def _load_process(self, libpath, container_name):
+        container_collection = self._append_blend(libpath, container_name)
+        self._make_local_actions(container_collection)
+        return container_collection

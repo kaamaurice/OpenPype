@@ -21,7 +21,7 @@ class ActionLoader(plugin.AssetLoader):
             if obj.animation_data and obj.animation_data.action:
                 return obj.animation_data.action
 
-    def _remove_container(self, container: Dict) -> bool:
+    def exec_remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.
 
         Arguments:
@@ -37,7 +37,7 @@ class ActionLoader(plugin.AssetLoader):
                 if obj.animation_data and obj.animation_data.action:
                     bpy.data.actions.remove(obj.animation_data.action)
 
-        return super()._remove_container(container)
+        return super().exec_remove(container)
 
     def exec_update(
         self, container: Dict, representation: Dict
@@ -78,8 +78,8 @@ class LinkActionLoader(ActionLoader):
     icon = "link"
     order = 0
 
-    def _process(self, libpath: str, asset_group: bpy.types.Collection):
-        self._link_blend(libpath, asset_group)
+    def _load_process(self, libpath: str, asset_group: bpy.types.Collection):
+        self._link_blend(libpath, container_name)
 
 
 class AppendActionLoader(ActionLoader):
@@ -92,5 +92,5 @@ class AppendActionLoader(ActionLoader):
     icon = "paperclip"
     order = 1
 
-    def _process(self, libpath: str, asset_group: bpy.types.Collection):
-        self._append_blend(libpath, asset_group)
+    def _load_process(self, libpath: str, asset_group: bpy.types.Collection):
+        self._append_blend(libpath, container_name)

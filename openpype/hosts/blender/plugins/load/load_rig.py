@@ -118,12 +118,12 @@ class RigLoader(plugin.AssetLoader):
 
     def process_asset(self, *args, **kwargs) -> bpy.types.Collection:
         """Asset loading Process"""
-        asset_group = super().process_asset(*args, **kwargs)
+        container_collection = super().process_asset(*args, **kwargs)
 
         # Ensure loaded rig has action.
-        self._assign_actions(asset_group)
+        self._assign_actions(container_collection)
 
-        return asset_group
+        return container_collection
 
 
 class LinkRigLoader(RigLoader):
@@ -136,9 +136,9 @@ class LinkRigLoader(RigLoader):
     icon = "link"
     order = 0
 
-    def _process(self, libpath, asset_group):
+    def _load_process(self, libpath, container_name):
         # Load blend from from libpath library.
-        self._link_blend(libpath, asset_group)
+        return self._link_blend(libpath, container_name)
 
 
 class AppendRigLoader(RigLoader):
@@ -151,6 +151,6 @@ class AppendRigLoader(RigLoader):
     icon = "paperclip"
     order = 1
 
-    def _process(self, libpath, asset_group):
+    def _load_process(self, libpath, container_name):
         # Load blend from from libpath library.
-        self._append_blend(libpath, asset_group)
+        return self._append_blend(libpath, container_name)

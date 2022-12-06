@@ -17,7 +17,7 @@ class LinkWorkfileLoader(plugin.AssetLoader):
     color_tag = "COLOR_06"
     order = 0
 
-    def _process(self, libpath, asset_group):
+    def _load_process(self, libpath, container_name):
         with bpy.data.libraries.load(
             libpath, link=True, relative=False
         ) as (data_from, data_to):
@@ -45,7 +45,7 @@ class AppendWorkfileLoader(plugin.AssetLoader):
     color_tag = "COLOR_06"
     order = 1
 
-    def _process(self, libpath, asset_group):
+    def _load_process(self, libpath, container_name):
         with bpy.data.libraries.load(
             libpath, link=False, relative=False
         ) as (data_from, data_to):

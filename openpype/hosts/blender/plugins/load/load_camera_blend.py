@@ -23,8 +23,8 @@ class LinkCameraLoader(plugin.AssetLoader):
         "drivers",
     ]
 
-    def _process(self, libpath, asset_group):
-        self._link_blend(libpath, asset_group)
+    def _load_process(self, libpath, container_name):
+        return self._link_blend(libpath, container_name)
 
 
 class AppendCameraLoader(LinkCameraLoader):
@@ -34,5 +34,5 @@ class AppendCameraLoader(LinkCameraLoader):
     icon = "paperclip"
     order = 1
 
-    def _process(self, libpath, asset_group):
-        self._append_blend(libpath, asset_group)
+    def _load_process(self, libpath, container_name):
+        return self._append_blend(libpath, container_name)

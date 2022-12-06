@@ -15,8 +15,8 @@ class LinkSetdressLoader(plugin.AssetLoader):
     color_tag = "COLOR_06"
     order = 0
 
-    def _process(self, libpath, asset_group):
-        self._link_blend(libpath, asset_group)
+    def _load_process(self, libpath, container_name):
+        self._link_blend(libpath, container_name)
 
 
 class AppendSetdressLoader(plugin.AssetLoader):
@@ -31,5 +31,5 @@ class AppendSetdressLoader(plugin.AssetLoader):
     color_tag = "COLOR_06"
     order = 1
 
-    def _process(self, libpath, asset_group):
-        self._append_blend(libpath, asset_group)
+    def _load_process(self, libpath, container_name):
+        self._append_blend(libpath, container_name)
