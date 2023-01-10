@@ -13,50 +13,15 @@ import copy
 
 import pyblish.api
 
+from openpype.plugins.publish.integrate import IntegrateAsset
+
 
 class CollectResourcesPath(pyblish.api.InstancePlugin):
     """Generate directory path where the files and resources will be stored"""
 
     label = "Collect Resources Path"
     order = pyblish.api.CollectorOrder + 0.495
-    families = ["workfile",
-                "pointcache",
-                "camera",
-                "animation",
-                "model",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "ass",
-                "vdbcache",
-                "scene",
-                "vrayproxy",
-                "render",
-                "prerender",
-                "imagesequence",
-                "rendersetup",
-                "rig",
-                "plate",
-                "look",
-                "mvLook",
-                "yetiRig",
-                "yeticache",
-                "nukenodes",
-                "gizmo",
-                "source",
-                "matchmove",
-                "image",
-                "source",
-                "assembly",
-                "fbx",
-                "textures",
-                "action",
-                "background",
-                "effect",
-                "staticMesh",
-                "skeletalMesh"
-                ]
+    families = IntegrateAsset.families
 
     def process(self, instance):
         anatomy = instance.context.data["anatomy"]
