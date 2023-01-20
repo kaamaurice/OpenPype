@@ -632,8 +632,6 @@ class AssetLoader(Loader):
     it's different for different types (e.g. model, rig, animation,
     etc.).
     """
-    hosts = ["blender"]
-    representations = []
 
     load_type = None
 
@@ -954,6 +952,7 @@ class AssetLoader(Loader):
 
     def _apply_options(self, asset_group, options):
         """Can be implemented by a sub-class"""
+        pass
 
     def get_load_function(self) -> Callable:
         """Get appropriate function regarding the load type of the loader.
