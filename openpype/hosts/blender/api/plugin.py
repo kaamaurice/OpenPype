@@ -1058,9 +1058,6 @@ class AssetLoader(Loader):
         if options is not None:
             self._apply_options(container, options)
 
-        # Clear and purge useless datablocks.
-        orphans_purge()
-
         self[:] = list(datablocks)
         return container, datablocks
 
