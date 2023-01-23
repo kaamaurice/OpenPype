@@ -1,65 +1,138 @@
 """Load an animation in Blender."""
 
-from typing import Dict, List, Optional
+from typing import Dict
 
 import bpy
 
 from openpype.hosts.blender.api import plugin
-from openpype.hosts.blender.api.pipeline import AVALON_PROPERTY
 
 
-class BlendAnimationLoader(plugin.AssetLoader):
-    """Load animations from a .blend file.
+class AnimationLoader(plugin.AssetLoader):
+    """Load animations from a .blend file."""
 
-    Warning:
-        Loading the same asset more then once is not properly supported at the
-        moment.
-    """
+    color = "orange"
+
+    linked_library = None
+
+    def _load_actions_from_library(self, libpath):
+        """Load and link actions from libpath library."""
+        with bpy.data.libraries.load(
+            libpath, link=self.linked_library, relative=False
+        ) as (data_from, data_to):
+            data_to.actions = data_from.actions
+
+        return data_to.actions
+
+    def _remove_actions_from_library(self, asset_group):
+        """Remove action from all objects in asset_group"""
+        for obj in asset_group.all_objects:
+            if obj.animation_data and obj.animation_data.action:
+                obj.animation_data.action = None
+
+    def _remove_container(self, container: Dict) -> bool:
+        """Remove an existing container from a Blender scene.
+
+        Arguments:
+            container: Container to remove.
+
+        Returns:
+            bool: Whether the container was deleted.
+        """
+        asset_group = self._get_asset_group_container(container)
+
+        if asset_group:
+
+            # Remove actions from asset_group container.
+            self._remove_actions_from_library(asset_group)
+
+            # Unlink all child objects and collections.
+            for obj in asset_group.objects:
+                asset_group.objects.unlink(obj)
+            for child in asset_group.children:
+                asset_group.children.unlink(child)
+
+        return super()._remove_container(container)
+
+    def _process(self, libpath: str, asset_group: bpy.types.Collection):
+
+        scene = bpy.context.scene
+        scene_collections = plugin.get_children_recursive(scene.collection)
+        actions = self._load_actions_from_library(libpath)
+
+        assert actions, "No actions found"
+
+        # Try to assign linked actions with parsing their name.
+        for action in actions:
+
+            collection_name = action.get("collection", "NONE")
+            armature_name = action.get("armature", "NONE")
+
+            collection = next(
+                (c for c in scene_collections if c.name == collection_name),
+                None
+            )
+
+            if collection_name == "NONE":
+                armature = bpy.context.scene.objects.get(armature_name)
+            else:
+                assert collection, (
+                    f"invalid collection name '{collection_name}' "
+                    f"for action: {action.name}"
+                )
+                armature = collection.all_objects.get(armature_name)
+
+            assert armature, (
+                f"invalid armature name '{armature_name}' "
+                f"for action: {action.name}"
+            )
+
+            if not armature.animation_data:
+                armature.animation_data_create()
+            armature.animation_data.action = action
+
+            if collection:
+                plugin.link_to_collection(collection, asset_group)
+            else:
+                plugin.link_to_collection(armature, asset_group)
+
+        plugin.orphans_purge()
+
+
+class LinkAnimationLoader(AnimationLoader):
+    """Link animations from a .blend file."""
 
     families = ["animation"]
     representations = ["blend"]
 
     label = "Link Animation"
-    icon = "code-fork"
-    color = "orange"
+    icon = "link"
+    order = 0
 
-    def process_asset(
-        self, context: dict, name: str, namespace: Optional[str] = None,
-        options: Optional[Dict] = None
-    ) -> Optional[List]:
-        """
-        Arguments:
-            name: Use pre-defined name
-            namespace: Use pre-defined namespace
-            context: Full parenthood of representation to load
-            options: Additional settings dictionary
-        """
-        libpath = self.fname
+    linked_library = True
 
-        with bpy.data.libraries.load(
-            libpath, link=True, relative=False
-        ) as (data_from, data_to):
-            data_to.objects = data_from.objects
-            data_to.actions = data_from.actions
+    def _remove_actions_from_library(self, asset_group):
+        """Restor action from override library reference animation data"""
+        for obj in asset_group.all_objects:
+            if (
+                obj.animation_data
+                and obj.override_library
+                and obj.override_library.reference
+                and obj.override_library.reference.animation_data
+                and obj.override_library.reference.animation_data.action
+            ):
+                obj.animation_data.action = (
+                    obj.override_library.reference.animation_data.action
+                )
 
-        container = data_to.objects[0]
 
-        assert container, "No asset group found"
+class AppendAnimationLoader(AnimationLoader):
+    """Append animations from a .blend file."""
 
-        target_namespace = container.get(AVALON_PROPERTY).get('namespace')
+    families = ["animation"]
+    representations = ["blend"]
 
-        action = data_to.actions[0].make_local().copy()
+    label = "Append Animation"
+    icon = "paperclip"
+    order = 1
 
-        for obj in bpy.data.objects:
-            if obj.get(AVALON_PROPERTY) and obj.get(AVALON_PROPERTY).get(
-                    'namespace') == target_namespace:
-                if obj.children[0]:
-                    if not obj.children[0].animation_data:
-                        obj.children[0].animation_data_create()
-                    obj.children[0].animation_data.action = action
-                break
-
-        bpy.data.objects.remove(container)
-
-        library = bpy.data.libraries.get(bpy.path.basename(libpath))
-        bpy.data.libraries.remove(library)
+    linked_library = False

@@ -5,24 +5,24 @@ import bpy
 import bpy_extras
 import bpy_extras.anim_utils
 
+from openpype.pipeline import publish, AVALON_CONTAINER_ID
 from openpype.client import get_representation_by_name
-from openpype.pipeline import publish
 from openpype.hosts.blender.api import plugin
 from openpype.hosts.blender.api.pipeline import AVALON_PROPERTY
 
 
 class ExtractLayout(publish.Extractor):
-    """Extract a layout."""
+    """Extract a layout as json."""
 
-    label = "Extract Layout"
+    label = "Extract JSON Layout"
     hosts = ["blender"]
     families = ["layout"]
     optional = True
 
-    def _export_animation(self, asset, instance, stagingdir, fbx_count):
+    def _export_animation(self, asset, stagingdir, fbx_count):
         n = fbx_count
 
-        for obj in asset.children:
+        for obj in asset.all_objects:
             if obj.type != "ARMATURE":
                 continue
 
@@ -48,11 +48,8 @@ class ExtractLayout(publish.Extractor):
                 self.log.info("Object have no animation.")
                 continue
 
-            asset_group_name = asset.name
-            asset.name = asset.get(AVALON_PROPERTY).get("asset_name")
-
             armature_name = obj.name
-            original_name = armature_name.split(':')[1]
+            original_name = armature_name.split(':')[-1]
             obj.name = original_name
 
             object_action_pairs.append((obj, copy_action))
@@ -73,27 +70,22 @@ class ExtractLayout(publish.Extractor):
             for o in bpy.data.objects:
                 o.select_set(False)
 
-            asset.select_set(True)
             obj.select_set(True)
             fbx_filename = f"{n:03d}.fbx"
             filepath = os.path.join(stagingdir, fbx_filename)
 
-            override = plugin.create_blender_context(
-                active=asset, selected=[asset, obj])
-            bpy.ops.export_scene.fbx(
-                override,
-                filepath=filepath,
-                use_active_collection=False,
-                use_selection=True,
-                bake_anim_use_nla_strips=False,
-                bake_anim_use_all_actions=False,
-                add_leaf_bones=False,
-                armature_nodetype='ROOT',
-                object_types={'EMPTY', 'ARMATURE'}
-            )
+            with plugin.context_override(active=obj, selected=obj):
+                bpy.ops.export_scene.fbx(
+                    filepath=filepath,
+                    use_active_collection=False,
+                    use_selection=True,
+                    bake_anim_use_nla_strips=False,
+                    bake_anim_use_all_actions=False,
+                    add_leaf_bones=False,
+                    armature_nodetype='ROOT',
+                    object_types={'EMPTY', 'ARMATURE'}
+                )
             obj.name = armature_name
-            asset.name = asset_group_name
-            asset.select_set(False)
             obj.select_set(False)
 
             # We delete the baked action and set the original one back
@@ -119,41 +111,56 @@ class ExtractLayout(publish.Extractor):
         # Perform extraction
         self.log.info("Performing extraction..")
 
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
-
         json_data = []
         fbx_files = []
 
-        asset_group = bpy.data.objects[str(instance)]
+        members = instance[:-1]
 
         fbx_count = 0
 
+        assets = [
+            member
+            for member in members
+            if (
+                not member.override_library
+                and member.get(AVALON_PROPERTY)
+                and member[AVALON_PROPERTY].get("id") == AVALON_CONTAINER_ID
+            )
+        ]
+
         project_name = instance.context.data["projectEntity"]["name"]
-        for asset in asset_group.children:
+        for asset in assets:
             metadata = asset.get(AVALON_PROPERTY)
 
-            version_id = metadata["parent"]
-            family = metadata["family"]
+            # skip invalid assets
+            for key in ("parent", "family", "asset_name", "libpath"):
+                if key not in metadata:
+                    self.log.debug(f"Missing metadata for {asset.name}: {key}")
+                    continue
 
-            self.log.debug("Parent: {}".format(version_id))
+            self.log.info(f"Extracting: {asset.name}")
+
+            parent = metadata.get("parent")
+            family = metadata.get("family")
+
+            self.log.debug(f"Parent: {parent}")
             # Get blend reference
             blend = get_representation_by_name(
-                project_name, "blend", version_id, fields=["_id"]
+                project_name, "blend", parent, fields=["_id"]
             )
             blend_id = None
             if blend:
                 blend_id = blend["_id"]
             # Get fbx reference
             fbx = get_representation_by_name(
-                project_name, "fbx", version_id, fields=["_id"]
+                project_name, "fbx", parent, fields=["_id"]
             )
             fbx_id = None
             if fbx:
                 fbx_id = fbx["_id"]
             # Get abc reference
             abc = get_representation_by_name(
-                project_name, "abc", version_id, fields=["_id"]
+                project_name, "abc", parent, fields=["_id"]
             )
             abc_id = None
             if abc:
@@ -168,43 +175,32 @@ class ExtractLayout(publish.Extractor):
                 json_element["reference_abc"] = str(abc_id)
             json_element["family"] = family
             json_element["instance_name"] = asset.name
-            json_element["asset_name"] = metadata["asset_name"]
-            json_element["file_path"] = metadata["libpath"]
+            json_element["namespace"] = metadata.get("namespace")
+            json_element["asset_name"] = metadata.get("asset_name")
+            json_element["file_path"] = metadata.get("libpath")
 
-            json_element["transform"] = {
-                "translation": {
-                    "x": asset.location.x,
-                    "y": asset.location.y,
-                    "z": asset.location.z
-                },
-                "rotation": {
-                    "x": asset.rotation_euler.x,
-                    "y": asset.rotation_euler.y,
-                    "z": asset.rotation_euler.z
-                },
-                "scale": {
-                    "x": asset.scale.x,
-                    "y": asset.scale.y,
-                    "z": asset.scale.z
+            if isinstance(asset, bpy.types.Object):
+                json_element["transform"] = {
+                    "translation": {
+                        "x": asset.location.x,
+                        "y": asset.location.y,
+                        "z": asset.location.z
+                    },
+                    "rotation": {
+                        "x": asset.rotation_euler.x,
+                        "y": asset.rotation_euler.y,
+                        "z": asset.rotation_euler.z
+                    },
+                    "scale": {
+                        "x": asset.scale.x,
+                        "y": asset.scale.y,
+                        "z": asset.scale.z
+                    }
                 }
-            }
-
-            json_element["transform_matrix"] = []
-
-            for row in list(asset.matrix_world.transposed()):
-                json_element["transform_matrix"].append(list(row))
-
-            json_element["basis"] = [
-                [1, 0, 0, 0],
-                [0, -1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]
-            ]
 
             # Extract the animation as well
             if family == "rig":
-                f, n = self._export_animation(
-                    asset, instance, stagingdir, fbx_count)
+                f, n = self._export_animation(asset, stagingdir, fbx_count)
                 if f:
                     fbx_files.append(f)
                     json_element["animation"] = f
@@ -218,32 +214,27 @@ class ExtractLayout(publish.Extractor):
         with open(json_path, "w+") as file:
             json.dump(json_data, fp=file, indent=2)
 
+        instance.data.setdefault("representations", [])
+
         json_representation = {
-            'name': 'json',
-            'ext': 'json',
-            'files': json_filename,
+            "name": "json",
+            "ext": "json",
+            "files": json_filename,
             "stagingDir": stagingdir,
         }
         instance.data["representations"].append(json_representation)
 
-        self.log.debug(fbx_files)
+        self.log.debug(f"fbx_files: {fbx_files}")
 
-        if len(fbx_files) == 1:
+        if fbx_files:
             fbx_representation = {
-                'name': 'fbx',
-                'ext': '000.fbx',
-                'files': fbx_files[0],
-                "stagingDir": stagingdir,
-            }
-            instance.data["representations"].append(fbx_representation)
-        elif len(fbx_files) > 1:
-            fbx_representation = {
-                'name': 'fbx',
-                'ext': 'fbx',
-                'files': fbx_files,
+                "name": "fbx",
+                "ext": "000.fbx" if len(fbx_files) == 1 else "fbx",
+                "files": fbx_files[0] if len(fbx_files) == 1 else fbx_files,
                 "stagingDir": stagingdir,
             }
             instance.data["representations"].append(fbx_representation)
 
-        self.log.info("Extracted instance '%s' to: %s",
-                      instance.name, json_representation)
+        self.log.info(
+            f"Extracted instance '{instance.name}' to: {json_representation}"
+        )

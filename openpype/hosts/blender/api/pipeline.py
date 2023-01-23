@@ -1,7 +1,7 @@
 import os
 import sys
 import traceback
-from typing import Callable, Dict, Iterator, List, Optional
+from typing import Callable, Dict, Iterator, List, Optional, Union
 
 import bpy
 
@@ -35,8 +35,6 @@ CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 
 ORIGINAL_EXCEPTHOOK = sys.excepthook
 
-AVALON_INSTANCES = "AVALON_INSTANCES"
-AVALON_CONTAINERS = "AVALON_CONTAINERS"
 AVALON_PROPERTY = 'avalon'
 IS_HEADLESS = bpy.app.background
 
@@ -216,27 +214,6 @@ def _discover_gui() -> Optional[Callable]:
     return None
 
 
-def add_to_avalon_container(container: bpy.types.Collection):
-    """Add the container to the Avalon container."""
-
-    avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
-    if not avalon_container:
-        avalon_container = bpy.data.collections.new(name=AVALON_CONTAINERS)
-
-        # Link the container to the scene so it's easily visible to the artist
-        # and can be managed easily. Otherwise it's only found in "Blender
-        # File" view and it will be removed by Blenders garbage collection,
-        # unless you set a 'fake user'.
-        bpy.context.scene.collection.children.link(avalon_container)
-
-    avalon_container.children.link(container)
-
-    # Disable Avalon containers for the view layers.
-    for view_layer in bpy.context.scene.view_layers:
-        for child in view_layer.layer_collection.children:
-            if child.collection == avalon_container:
-                child.exclude = True
-
 
 def metadata_update(node: bpy.types.bpy_struct_meta_idprop, data: Dict):
     """Imprint the node with metadata.
@@ -247,8 +224,6 @@ def metadata_update(node: bpy.types.bpy_struct_meta_idprop, data: Dict):
     if not node.get(AVALON_PROPERTY):
         node[AVALON_PROPERTY] = dict()
     for key, value in data.items():
-        if value is None:
-            continue
         node[AVALON_PROPERTY][key] = value
 
 
@@ -296,7 +271,6 @@ def containerise(name: str,
     }
 
     metadata_update(container, data)
-    add_to_avalon_container(container)
 
     return container
 
@@ -335,13 +309,14 @@ def containerise_existing(
     }
 
     metadata_update(container, data)
-    add_to_avalon_container(container)
 
     return container
 
 
-def parse_container(container: bpy.types.Collection,
-                    validate: bool = True) -> Dict:
+def parse_container(
+    container: Union[bpy.types.Collection, bpy.types.Object],
+    validate: bool = True
+) -> Dict:
     """Return the container node's full container data.
 
     Args:
@@ -372,8 +347,19 @@ def ls() -> Iterator:
     called containers.
     """
 
-    for container in lib.lsattr("id", AVALON_CONTAINER_ID):
-        yield parse_container(container)
+    collections = lib.lsattr("id", AVALON_CONTAINER_ID)
+    scene_collections = list(bpy.context.scene.collection.children)
+    for collection in scene_collections:
+        if len(collection.children):
+            scene_collections.extend(collection.children)
+
+    for container in collections:
+        if container in scene_collections and not container.override_library:
+            yield parse_container(container)
+
+    for obj in bpy.context.scene.objects:
+        if obj.is_instancer and obj.instance_collection in collections:
+            yield parse_container(obj)
 
 
 def update_hierarchy(containers):

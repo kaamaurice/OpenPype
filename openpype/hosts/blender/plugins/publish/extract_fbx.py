@@ -4,7 +4,6 @@ import bpy
 
 from openpype.pipeline import publish
 from openpype.hosts.blender.api import plugin
-from openpype.hosts.blender.api.pipeline import AVALON_PROPERTY
 
 
 class ExtractFBX(publish.Extractor):
@@ -27,23 +26,16 @@ class ExtractFBX(publish.Extractor):
         plugin.deselect_all()
 
         selected = []
-        asset_group = None
 
         for obj in instance:
-            obj.select_set(True)
-            selected.append(obj)
-            if obj.get(AVALON_PROPERTY):
-                asset_group = obj
-
-        context = plugin.create_blender_context(
-            active=asset_group, selected=selected)
+            if isinstance(obj, bpy.types.Object):
+                obj.select_set(True)
+                selected.append(obj)
 
         new_materials = []
         new_materials_objs = []
-        objects = list(asset_group.children)
 
-        for obj in objects:
-            objects.extend(obj.children)
+        for obj in selected:
             if obj.type == 'MESH' and len(obj.data.materials) == 0:
                 mat = bpy.data.materials.new(obj.name)
                 obj.data.materials.append(mat)
@@ -54,14 +46,14 @@ class ExtractFBX(publish.Extractor):
         bpy.context.scene.unit_settings.scale_length = 0.01
 
         # We export the fbx
-        bpy.ops.export_scene.fbx(
-            context,
-            filepath=filepath,
-            use_active_collection=False,
-            use_selection=True,
-            mesh_smooth_type='FACE',
-            add_leaf_bones=False
-        )
+        with plugin.context_override(active=selected[-1], selected=selected):
+            bpy.ops.export_scene.fbx(
+                filepath=filepath,
+                use_active_collection=False,
+                use_selection=True,
+                mesh_smooth_type='FACE',
+                add_leaf_bones=False
+            )
 
         bpy.context.scene.unit_settings.scale_length = scale_length
 
@@ -73,8 +65,7 @@ class ExtractFBX(publish.Extractor):
         for obj in new_materials_objs:
             obj.data.materials.pop()
 
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
+        instance.data.setdefault("representations", [])
 
         representation = {
             'name': 'fbx',
@@ -84,5 +75,6 @@ class ExtractFBX(publish.Extractor):
         }
         instance.data["representations"].append(representation)
 
-        self.log.info("Extracted instance '%s' to: %s",
-                      instance.name, representation)
+        self.log.info(
+            f"Extracted instance '{instance.name}' to: {representation}"
+        )

@@ -9,7 +9,7 @@ from openpype.hosts.blender.api import plugin
 class ExtractCamera(publish.Extractor):
     """Extract as the camera as FBX."""
 
-    label = "Extract Camera"
+    label = "Extract FBX Camera"
     hosts = ["blender"]
     families = ["camera"]
     optional = True
@@ -38,40 +38,37 @@ class ExtractCamera(publish.Extractor):
 
         assert camera, "No camera found"
 
-        context = plugin.create_blender_context(
-            active=camera, selected=selected)
-
         scale_length = bpy.context.scene.unit_settings.scale_length
         bpy.context.scene.unit_settings.scale_length = 0.01
 
         # We export the fbx
-        bpy.ops.export_scene.fbx(
-            context,
-            filepath=filepath,
-            use_active_collection=False,
-            use_selection=True,
-            bake_anim_use_nla_strips=False,
-            bake_anim_use_all_actions=False,
-            add_leaf_bones=False,
-            armature_nodetype='ROOT',
-            object_types={'CAMERA'},
-            bake_anim_simplify_factor=0.0
-        )
+        with plugin.context_override(active=camera, selected=selected):
+            bpy.ops.export_scene.fbx(
+                filepath=filepath,
+                use_active_collection=False,
+                use_selection=True,
+                bake_anim_use_nla_strips=False,
+                bake_anim_use_all_actions=False,
+                add_leaf_bones=False,
+                armature_nodetype="ROOT",
+                object_types={"CAMERA"},
+                bake_anim_simplify_factor=0.0
+            )
 
         bpy.context.scene.unit_settings.scale_length = scale_length
 
         plugin.deselect_all()
 
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
+        instance.data.setdefault("representations", [])
 
         representation = {
-            'name': 'fbx',
-            'ext': 'fbx',
-            'files': filename,
+            "name": "fbx",
+            "ext": "fbx",
+            "files": filename,
             "stagingDir": stagingdir,
         }
         instance.data["representations"].append(representation)
 
-        self.log.info("Extracted instance '%s' to: %s",
-                      instance.name, representation)
+        self.log.info(
+            f"Extracted instance '{instance.name}' to: {representation}"
+        )

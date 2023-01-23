@@ -14,7 +14,7 @@ class SelectInvalidAction(pyblish.api.Action):
     def process(self, context, plugin):
         errored_instances = get_errored_instances_from_context(context)
         instances = pyblish.api.instances_by_plugin(errored_instances, plugin)
-
+        
         # Get the invalid nodes for the plug-ins
         self.log.info("Finding invalid nodes...")
         invalid = list()
@@ -24,14 +24,25 @@ class SelectInvalidAction(pyblish.api.Action):
                 if isinstance(invalid_nodes, (list, tuple)):
                     invalid.extend(invalid_nodes)
                 else:
-                    self.log.warning(
-                        "Failed plug-in doesn't have any selectable objects."
-                    )
+                    invalid_nodes.append(invalid)
+
+        # Get selectable objects from invalid nodes.
+        invalid_objects = set()
+        for node in invalid_nodes:
+            if isinstance(node, bpy.types.Object):
+                invalid_objects.add(node)
+            elif isinstance(node, bpy.types.Collection):
+                invalid_objects.update(node.all_objects)
+
+        if not invalid_objects:
+            self.log.warning(
+                "Failed plug-in doesn't have any selectable objects."
+            )
 
         bpy.ops.object.select_all(action='DESELECT')
 
         # Make sure every node is only processed once
-        invalid = list(set(invalid))
+        invalid = list(invalid_objects)
         if not invalid:
             self.log.info("No invalid nodes found.")
             return
