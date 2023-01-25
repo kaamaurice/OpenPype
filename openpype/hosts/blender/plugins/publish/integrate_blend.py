@@ -56,7 +56,7 @@ class IntegrateBlenderAsset(pyblish.api.InstancePlugin):
             published_path = representation.get("data", {}).get("path")
 
             # Set main command
-            main_command = [bpy.app.binary_path, published_path, "-b", "-P"]
+            main_command = [bpy.app.binary_path, published_path, "-b"]
 
             # If not workfile, it is a blend and there is a published file
             if representation.get("name") == "blend" and published_path:
@@ -67,23 +67,22 @@ class IntegrateBlenderAsset(pyblish.api.InstancePlugin):
                     project_name, repre_id, site
                 )
                 
-                cmd = []
                 if use_path_management:
                     self.log.info(
                         f"Running {make_paths_relative.__file__}"
                         f"to {published_path}..."
                     )
                     # Make paths relative
-                    cmd = [
-                        *main_command,
+                    main_command.extend([
+                        "-P",
                         make_paths_relative.__file__,
-                    ]
+                    ])
 
                 self.log.info(
                     f"Running {update_representations.__file__}"
                     f"to {published_path}..."
                 )
-                cmd.extend(
+                main_command.extend(
                     [
                         "-P",
                         update_representations.__file__,
@@ -101,7 +100,7 @@ class IntegrateBlenderAsset(pyblish.api.InstancePlugin):
                         str(repre_id),
                     ]
                 )
-                cmd.extend(["--published_time", instance.context.data["time"]])
+                main_command.extend(["--published_time", instance.context.data["time"]])
 
                 # Build function to callback
                 def callback(id: ObjectId, future: Future):
@@ -113,7 +112,7 @@ class IntegrateBlenderAsset(pyblish.api.InstancePlugin):
                         )
 
                 # Submit command to pool
-                f = pool.submit(subprocess.check_call, cmd, shell=False)
+                f = pool.submit(subprocess.check_call, main_command, shell=False)
                 f.add_done_callback(partial(callback, repre_id))
 
         # Go asynchrone
