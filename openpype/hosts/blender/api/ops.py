@@ -575,7 +575,7 @@ class SCENE_OT_CreateOpenpypeInstance(
                 row.prop(self, "datapath", text="", icon_only=True)
 
         # Checkbox to gather selected element in outliner
-        draw_gather_into_collection(self, layout)
+        draw_gather_into_collection(self, context)
 
 
     def execute(self, _context):
