@@ -9,6 +9,7 @@ from openpype.client import (
     get_representations,
 )
 from openpype.hosts.blender.api.properties import OpenpypeContainer
+from openpype.hosts.blender.api.utils import get_parent_collection
 from openpype.modules import ModulesManager
 from openpype.pipeline import (
     legacy_io,
@@ -183,7 +184,7 @@ def build_layout(project_name, asset_name):
         containers = {}
 
     # Try to load camera from environment's setdress
-    main_camera = None
+    camera_collection = None
     try:
         # Get env asset name
         env_asset_name = next(
@@ -200,53 +201,38 @@ def build_layout(project_name, asset_name):
                 project_name, env_asset_name, "cameraMain", "Append"
             )
 
-            # Select camera
-            main_camera = next(
-                (d_ref.datablock
-                for d_ref in cam_container.datablock_refs
-                if hasattr(d_ref.datablock, "type")
-                and d_ref.datablock.type == "CAMERA"),
-                None
-            )
+            # Keep camera collection
+            camera_collection = cam_container.outliner_entity
 
-            # Remove camera container to make it publishable
-            # TODO replace by make_container_publishable when fixed
-            openpype_containers = bpy.context.scene.openpype_containers
-            openpype_containers.remove(
-                openpype_containers.find(cam_container.name)
+            # Make cam container publishable
+            bpy.ops.scene.make_container_publishable(
+                container_name=cam_container.name, convert_to_current_asset=True
             )
     except RuntimeError:
-        main_camera = None
+        camera_collection = None
 
-    # Create camera instance from loaded camera
-    if main_camera:
-        main_camera.select_set(True)
-    cam_instance = create_instance(
-        "CreateCamera", "cameraMain", useSelection=bool(main_camera)
+    # Ensure camera instance
+    if not camera_collection:
+        bpy.ops.scene.create_openpype_instance(
+            creator_name="CreateCamera",
+            asset_name=asset_name,
+            subset_name="cameraMain",
+            gather_into_collection=True,
+        )
+
+    # Create review instance with camera collection
+    bpy.ops.scene.create_openpype_instance(
+        creator_name="CreateReview",
+        asset_name=asset_name,
+        subset_name="reviewMain",
+        datapath="collections",
+        datablock_name=camera_collection.name,
     )
-    if not main_camera:
-        main_camera = next(
-                obj
-                for obj in cam_instance.datablock_refs[0].datablock.all_objects
-                if hasattr(obj, "type")
-                and obj.type == "CAMERA"
-            )
-        # NOTE If None error because of camera, there is an issue at instance creation
-
-    # Create review instance with camera instance's camera object
-    review_instance = create_instance("CreateReview", "reviewMain")
-
-    # Select camera from cameraMain instance to link with the review
-    # TODO dirty as hell, instance creation must be done using the operators to avoid this
-    review_instance.datablock_refs[0].datablock.objects.unlink(
-        review_instance.datablock_refs[0].datablock.objects[0]
-    )
-    main_camera.name = cam_instance.name
-    main_camera.data.name = cam_instance.name
-    review_instance.datablock_refs[0].datablock.objects.link(main_camera)
 
     # load the board mov as image background linked into the camera
-    load_subset(project_name, asset_name, "BoardReference", "Background", "mov")
+    load_subset(
+        project_name, asset_name, "BoardReference", "Background", "mov"
+    )
 
 
 def build_anim(project_name, asset_name):
@@ -257,35 +243,54 @@ def build_anim(project_name, asset_name):
         asset_name (str):  The current asset name from OpenPype Session.
     """
 
-    load_subset(project_name, asset_name, "layoutMain", "Append")
-    load_subset(project_name, asset_name, "cameraMain", "Link")
+    load_subset(project_name, asset_name, "layoutMain", "Link")
+    cam_container, _cam_datablocks = load_subset(
+        project_name, asset_name, "cameraMain", "AppendCamera"
+    )
 
-    # Get animation instance creator
-    Creator = get_legacy_creator_by_name("CreateAnimation")
-    if not Creator:
-        raise ValueError('Creator plugin "CreateAnimation" was not found.')
+    # Clean cam container from review collection
+    # NOTE meant to be removed ASAP
+    for i, d_ref in reversed(list(enumerate(cam_container.datablock_refs))):
+        if d_ref.datablock.name.endswith("reviewMain"):
+            bpy.data.collections.remove(d_ref.datablock)
+            cam_container.datablock_refs.remove(i)
 
-    # TODO shouldn't touch the selection
-    bpy.ops.object.select_all(action="DESELECT")
+    # Get main camera
+    camera_collection = next(
+        (
+            d_ref.datablock
+            for d_ref in cam_container.datablock_refs
+            if isinstance(d_ref.datablock, bpy.types.Collection)
+        ),
+        None,
+    )
+
+    # Make cam container publishable
+    bpy.ops.scene.make_container_publishable(
+        container_name=cam_container.name
+    )
+
     for obj in bpy.context.scene.objects:
         # Select camera from cameraMain instance to link with the review.
-        # TODO shouldn't touch the selection
-        if obj.type == "CAMERA":
-            obj.select_set(True)
-            break
-        elif obj.type == "ARMATURE":
+        if obj.type == "ARMATURE":
             # Create animation instance
-            variant_name = obj.name.capitalize()
-            plugin = Creator(
-                f"animation{variant_name}",
-                asset_name,
-                {"variant": variant_name},
+            variant_name = obj.name[obj.name.find("RIG_") + 4 :].capitalize()
+            bpy.ops.scene.create_openpype_instance(
+                creator_name="CreateAnimation",
+                asset_name=asset_name,
+                subset_name=f"animation{variant_name}",
+                datapath="objects",
+                datablock_name=obj.name,
             )
-            plugin.process([obj])
-            # instance = plugin.process([obj])
-            # instance.name = f"{instance.name}:{obj.name}"
 
-    create_instance("CreateReview", "reviewMain", useSelection=True)
+    # Create review
+    bpy.ops.scene.create_openpype_instance(
+        creator_name="CreateReview",
+        asset_name=asset_name,
+        subset_name="reviewMain",
+        datapath="collections",
+        datablock_name=camera_collection.name,
+    )
 
 
 def build_render(project_name, asset_name):
