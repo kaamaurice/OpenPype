@@ -203,8 +203,12 @@ def build_layout(project_name, asset_name):
 
             # Clean cam container from review collection
             # NOTE meant to be removed ASAP
-            for i, d_ref in reversed(list(enumerate(cam_container.datablock_refs))):
-                if d_ref.datablock.name.endswith("reviewMain"):
+            for i, d_ref in reversed(
+                list(enumerate(cam_container.datablock_refs))
+            ):
+                if isinstance(
+                    d_ref.datablock, bpy.types.Collection
+                ) and d_ref.datablock.name.endswith("reviewMain"):
                     bpy.data.collections.remove(d_ref.datablock)
                     cam_container.datablock_refs.remove(i)
 
@@ -213,7 +217,8 @@ def build_layout(project_name, asset_name):
 
             # Make cam container publishable
             bpy.ops.scene.make_container_publishable(
-                container_name=cam_container.name, convert_to_current_asset=True
+                container_name=cam_container.name,
+                convert_to_current_asset=True,
             )
     except RuntimeError:
         camera_collection = None
@@ -258,7 +263,9 @@ def build_anim(project_name, asset_name):
     # Clean cam container from review collection
     # NOTE meant to be removed ASAP
     for i, d_ref in reversed(list(enumerate(cam_container.datablock_refs))):
-        if d_ref.datablock.name.endswith("reviewMain"):
+        if isinstance(
+            d_ref.datablock, bpy.types.Collection
+        ) and d_ref.datablock.name.endswith("reviewMain"):
             bpy.data.collections.remove(d_ref.datablock)
             cam_container.datablock_refs.remove(i)
 
@@ -273,9 +280,7 @@ def build_anim(project_name, asset_name):
     )
 
     # Make cam container publishable
-    bpy.ops.scene.make_container_publishable(
-        container_name=cam_container.name
-    )
+    bpy.ops.scene.make_container_publishable(container_name=cam_container.name)
 
     for obj in bpy.context.scene.objects:
         # Select camera from cameraMain instance to link with the review.
