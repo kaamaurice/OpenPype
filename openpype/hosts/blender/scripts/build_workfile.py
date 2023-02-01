@@ -201,6 +201,13 @@ def build_layout(project_name, asset_name):
                 project_name, env_asset_name, "cameraMain", "Append"
             )
 
+            # Clean cam container from review collection
+            # NOTE meant to be removed ASAP
+            for i, d_ref in reversed(list(enumerate(cam_container.datablock_refs))):
+                if d_ref.datablock.name.endswith("reviewMain"):
+                    bpy.data.collections.remove(d_ref.datablock)
+                    cam_container.datablock_refs.remove(i)
+
             # Keep camera collection
             camera_collection = cam_container.outliner_entity
 
