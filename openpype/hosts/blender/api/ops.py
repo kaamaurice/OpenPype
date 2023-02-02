@@ -727,7 +727,6 @@ class SCENE_OT_AddToOpenpypeInstance(
         return {"FINISHED"}
 
 
-
 def draw_gather_into_collection(self, context):
     """Draw checkbox to gather selected element in outliner.
     
@@ -770,6 +769,52 @@ class SCENE_OT_RemoveFromOpenpypeInstance(
             )
 
         return {"FINISHED"}
+
+
+class SCENE_OT_DuplicateOpenpypeInstance(bpy.types.Operator):
+    """Duplicate OpenPype instance"""
+
+    bl_idname = "scene.duplicate_openpype_instance"
+    bl_label = "Duplicate OpenPype Instance"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        op_instances = context.scene.openpype_instances
+
+        # Create new intance
+        new_instance = op_instances.add()
+
+        # Get active instance
+        active_instance = op_instances[
+            context.scene.openpype_instance_active_index
+        ]
+
+        # Apply metadata
+        # NOTE hardcoded because strange behaviour with .items()
+        for k in ["avalon", "creator_name", "icons"]:
+            new_instance[k] = active_instance.get(k)
+
+        # Change name
+        split_name = active_instance.name.rsplit(".", 1)
+        if len(split_name) > 1:
+            basename, number = split_name
+            extension = str(int(number) + 1).zfill(3)
+        else:
+            basename = split_name[0]
+            extension = "001"
+        new_instance.name = f"{basename}.{extension}"
+        new_instance["avalon"][
+            "subset"
+        ] = f'{active_instance["avalon"]["subset"]}.{extension}'
+
+        # Assign datablocks
+        add_datablocks_to_container(
+            (d_ref.datablock for d_ref in active_instance.datablock_refs),
+            new_instance,
+        )
+
+        return {"FINISHED"}
+
 
 class SCENE_OT_MoveOpenpypeInstance(bpy.types.Operator):
     bl_idname = "scene.move_openpype_instance"
@@ -1178,6 +1223,7 @@ classes = [
     SCENE_OT_RemoveOpenpypeInstance,
     SCENE_OT_AddToOpenpypeInstance,
     SCENE_OT_RemoveFromOpenpypeInstance,
+    SCENE_OT_DuplicateOpenpypeInstance,
     SCENE_OT_MoveOpenpypeInstance,
     SCENE_OT_MoveOpenpypeInstanceDatablock,
 ]
