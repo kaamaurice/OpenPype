@@ -10,7 +10,6 @@ from openpype.hosts.blender.api import plugin
 class AnimationLoader(plugin.AssetLoader):
     """Load animations from a .blend file."""
     families = ["animation"]
-    representations = ["blend"]
 
     color = "orange"
 
@@ -19,6 +18,7 @@ class AnimationLoader(plugin.AssetLoader):
 
 class LinkAnimationLoader(AnimationLoader):
     """Link animations from a .blend file."""
+    representations = ["blend"]
 
     label = "Link Animation"
     icon = "link"
@@ -29,6 +29,7 @@ class LinkAnimationLoader(AnimationLoader):
 
 class AppendAnimationLoader(AnimationLoader):
     """Append animations from a .blend file."""
+    representations = ["blend"]
 
     label = "Append Animation"
     icon = "paperclip"
