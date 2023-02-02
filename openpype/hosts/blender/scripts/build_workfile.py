@@ -9,7 +9,6 @@ from openpype.client import (
     get_representations,
 )
 from openpype.hosts.blender.api.properties import OpenpypeContainer
-from openpype.hosts.blender.api.utils import get_parent_collection
 from openpype.modules import ModulesManager
 from openpype.pipeline import (
     legacy_io,
@@ -231,6 +230,7 @@ def build_layout(project_name, asset_name):
             subset_name="cameraMain",
             gather_into_collection=True,
         )
+        camera_collection = bpy.context.scene.openpype_instances[-1].datablock_refs[0].datablock
 
     # Create review instance with camera collection
     bpy.ops.scene.create_openpype_instance(
