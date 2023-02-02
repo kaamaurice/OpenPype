@@ -112,10 +112,13 @@ def load_casting(project_name, shot_name) -> Set[OpenpypeContainer]:
                 subset_name = "setdressMain"
             else:
                 subset_name = "rigMain"
-            container, _datablocks = load_subset(
-                project_name, actor["asset_name"], subset_name, "Link"
-            )
-            containers.add(container)
+            try:
+                container, _datablocks = load_subset(
+                    project_name, actor["asset_name"], subset_name, "Link"
+                )
+                containers.add(container)
+            except TypeError:
+                print(f"Cannot load {actor['asset_name']} {subset_name}.")
 
     gazu.log_out()
 
