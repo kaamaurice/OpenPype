@@ -182,6 +182,17 @@ def build_layout(project_name, asset_name):
                 c.outliner_entity
             )
             bpy.context.scene.collection.children.unlink(c.outliner_entity)
+
+        # Create GDEFORMER collection
+        gdeformer_col = bpy.data.collections.new("GDEFORMER")
+        layout_instance.datablock_refs[0].datablock.children.link(gdeformer_col)
+        for obj in bpy.context.scene.collection.all_objects:
+            if obj.name.startswith("GDEFORM"):
+                gdeformer_col.objects.link(obj)
+
+            # Assign collection to sol(s) object(s)
+            if obj.name.startswith("sol"):
+                obj.modifiers['GroundDeform']['Input_2'] = gdeformer_col
     except RuntimeError:
         containers = {}
 
