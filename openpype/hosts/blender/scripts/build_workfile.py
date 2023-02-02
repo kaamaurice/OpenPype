@@ -317,7 +317,26 @@ def build_render(project_name, asset_name):
         load_subset(project_name, asset_name, "layoutMain", "Append")
     if not load_subset(project_name, asset_name, "cameraFromAnim", "Link"):
         load_subset(project_name, asset_name, "cameraMain", "Link")
-    load_subset(project_name, asset_name, "animationMain", "Link")
+    _anim_container, anim_datablocks = load_subset(project_name, asset_name, "animationMain", "Link")
+    
+    # Try to assign linked actions by parsing their name
+    for action in anim_datablocks:
+        users = action.get("users", {})
+        for user_name in users:
+            obj = bpy.context.scene.objects.get(user_name)
+            if obj:
+                # Ensure animation data
+                if not obj.animation_data:
+                    obj.animation_data_create()
+
+                # Assign action
+                obj.animation_data.action = action
+            else:
+                print(
+                    f"Cannot match armature by name '{user_name}' "
+                    f"for action: {action.name}"
+                )
+                continue
 
 
 def build_workfile():
