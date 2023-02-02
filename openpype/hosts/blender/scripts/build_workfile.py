@@ -185,14 +185,17 @@ def build_layout(project_name, asset_name):
 
         # Create GDEFORMER collection
         gdeformer_col = bpy.data.collections.new("GDEFORMER")
-        layout_instance.datablock_refs[0].datablock.children.link(gdeformer_col)
+        layout_instance.datablock_refs[0].datablock.children.link(
+            gdeformer_col
+        )
         for obj in bpy.context.scene.collection.all_objects:
             if obj.name.startswith("GDEFORM"):
                 gdeformer_col.objects.link(obj)
 
             # Assign collection to sol(s) object(s)
             if obj.name.startswith("sol"):
-                obj.modifiers['GroundDeform']['Input_2'] = gdeformer_col
+                if obj.modifiers.get("GroundDeform"):
+                    obj.modifiers["GroundDeform"]["Input_2"] = gdeformer_col
     except RuntimeError:
         containers = {}
 
@@ -244,7 +247,11 @@ def build_layout(project_name, asset_name):
             subset_name="cameraMain",
             gather_into_collection=True,
         )
-        camera_collection = bpy.context.scene.openpype_instances[-1].datablock_refs[0].datablock
+        camera_collection = (
+            bpy.context.scene.openpype_instances[-1]
+            .datablock_refs[0]
+            .datablock
+        )
 
     # Create review instance with camera collection
     bpy.ops.scene.create_openpype_instance(
@@ -331,8 +338,10 @@ def build_render(project_name, asset_name):
         load_subset(project_name, asset_name, "layoutMain", "Append")
     if not load_subset(project_name, asset_name, "cameraFromAnim", "Link"):
         load_subset(project_name, asset_name, "cameraMain", "Link")
-    _anim_container, anim_datablocks = load_subset(project_name, asset_name, "animationMain", "Link")
-    
+    _anim_container, anim_datablocks = load_subset(
+        project_name, asset_name, "animationMain", "Link"
+    )
+
     # Try to assign linked actions by parsing their name
     for action in anim_datablocks:
         users = action.get("users", {})
