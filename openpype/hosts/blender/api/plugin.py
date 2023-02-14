@@ -1236,9 +1236,7 @@ class AssetLoader(Loader):
                     new_datablock.name = old_datablock["original_name"]
                     old_datablock.user_remap(new_datablock)
 
-                    # Ensure action remap, due to bug
-                    # https://projects.blender.org/blender/blender/issues/104576
-                    # TODO remove when fixed
+                    # Ensure action relink
                     if hasattr(old_datablock, "animation_data") and old_datablock.animation_data:
                         if not new_datablock.animation_data:
                             new_datablock.animation_data_create()
