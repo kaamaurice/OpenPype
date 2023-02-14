@@ -802,7 +802,7 @@ class SCENE_OT_DuplicateOpenpypeInstance(
 
         # Guess basename and extension
         split_name = active_instance.name.rsplit(".", 1)
-        if len(split_name) > 1:
+        if len(split_name) > 1 and split_name[1].isdigit():
             basename, number = split_name
             extension_i = int(number) + 1
         else:
