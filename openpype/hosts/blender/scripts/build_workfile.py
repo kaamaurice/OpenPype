@@ -325,6 +325,11 @@ def build_anim(project_name, asset_name):
         datablock_name=camera_collection.name,
     )
 
+    # load the board mov as image background linked into the camera
+    load_subset(
+        project_name, asset_name, "BoardReference", "Background", "mov"
+    )
+
 
 def build_render(project_name, asset_name):
     """Build render workfile.
