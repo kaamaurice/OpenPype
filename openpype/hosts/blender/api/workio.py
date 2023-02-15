@@ -45,8 +45,6 @@ def open_file(filepath: str) -> Optional[str]:
 
 def save_file(filepath: str, copy: bool = False) -> Optional[str]:
     """Save the open scene file."""
-    project_name = legacy_io.active_project()
-    project_setting = get_project_settings(project_name)
 
     result = bpy.ops.wm.save_as_mainfile(
         filepath=filepath,
