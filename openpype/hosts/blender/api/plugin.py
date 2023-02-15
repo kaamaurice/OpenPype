@@ -684,6 +684,68 @@ class AssetLoader(Loader):
             container["objectName"]
         )
 
+    def _containerize_objects_in_collection(
+        self,
+        container_name: str,
+        objects: List[bpy.types.Object],
+        container: OpenpypeContainer,
+    ) -> Tuple[OpenpypeContainer, List[bpy.types.ID]]:
+
+        # Create outliner entity collection for container
+        outliner_entity = bpy.data.collections.new(container_name)
+        bpy.context.scene.collection.children.link(outliner_entity)
+
+        # Set color
+        outliner_entity.color_tag = self.color_tag
+
+        # Substitute name in case renamed with .###
+        container_name = outliner_entity.name
+
+        link_to_collection(objects, outliner_entity)
+
+        datablocks = set(objects)
+        datablocks.add(outliner_entity)
+
+        # Put into container
+        container = self._containerize_datablocks(
+            container_name, datablocks, container=container
+        )
+
+        container.outliner_entity = outliner_entity
+
+        return container, datablocks
+
+    def _containerize_datablocks(
+        self,
+        container_name: str,
+        datablocks: List[bpy.types.ID],
+        container: OpenpypeContainer = None,
+    ) -> OpenpypeContainer:
+        """Associate datablocks to a container. Create one if needed.
+
+        Args:
+            container_name (str): Name of container to be loaded.
+            datablocks (List[bpy.types.ID]): Datablocks to filter and link to
+                container collection
+            container (OpenpypeContainer): Load into existing container.
+                Defaults to None.
+
+        Returns:
+            OpenpypeContainer: Created container
+        """
+        if container:
+            # Add datablocks to container
+            add_datablocks_to_container(datablocks, container)
+
+            # Rename container
+            if container.name != container_name:
+                container.name = container_name
+        else:
+            # Create container if none providen
+            container = create_container(container_name, datablocks)
+
+        return container
+
     def _apply_options(self, asset_group, options):
         """Can be implemented by a sub-class"""
         pass
@@ -691,6 +753,102 @@ class AssetLoader(Loader):
     def get_load_function(self) -> Callable:
         """Must be implemented by a sub-class"""
         raise NotImplementedError("Please implement in subclasses")
+
+    def replace_container(
+        self,
+        container: OpenpypeContainer,
+        new_libpath: Path,
+        new_container_name: str,
+    ) -> Tuple[OpenpypeContainer, List[bpy.types.ID]]:
+        """Replace container with datablocks from given libpath.
+
+        Args:
+            container (OpenpypeContainer): Container to replace datablocks of.
+            new_libpath (Path): Library path to load datablocks from.
+            new_container_name (str): Name of new container to load.
+
+        Returns:
+            Tuple[OpenpypeContainer, List[bpy.types.ID]]:
+                (Container, List of loaded datablocks)
+        """
+        load_func = self.get_load_function()
+
+        # Keep parent collection
+        if container.outliner_entity:
+            parent_collection = get_parent_collection(
+                container.outliner_entity
+            )
+            unlink_from_collection(
+                container.outliner_entity, parent_collection
+            )
+        else:
+            parent_collection = None
+
+        # Keep current datablocks
+        old_datablocks = {
+            d_ref.datablock
+            for d_ref in container.datablock_refs
+            if d_ref.datablock
+        }
+
+        # Clear container datablocks
+        container.datablock_refs.clear()
+
+        # Rename old datablocks
+        for old_datablock in old_datablocks:
+            old_datablock["original_name"] = old_datablock.name
+            old_datablock.name += ".old"
+
+        # Load new into same container
+        container, datablocks = load_func(
+            new_libpath,
+            new_container_name,
+            container=container,
+        )
+
+        # Old datablocks remap and deletion
+        for old_datablock in old_datablocks:
+            # Find matching new datablock by name without .###
+            new_datablock = next(
+                (
+                    d
+                    for d in datablocks
+                    if type(d) is type(old_datablock)
+                    and old_datablock["original_name"].rstrip(f".{digits}")
+                    == d.name.rstrip(f".{digits}")
+                ),
+                None,
+            )
+
+            # Replace old by new datablock and keep the original name.
+            if new_datablock:
+                new_datablock.name = old_datablock["original_name"]
+                old_datablock.user_remap(new_datablock)
+
+                # Ensure action relink
+                if (
+                    hasattr(old_datablock, "animation_data")
+                    and old_datablock.animation_data
+                ):
+                    if not new_datablock.animation_data:
+                        new_datablock.animation_data_create()
+                    new_datablock.animation_data.action = (
+                        old_datablock.animation_data.action
+                    )
+
+        # Restore parent collection if existing
+        if parent_collection:
+            unlink_from_collection(
+                container.outliner_entity, bpy.context.scene.collection
+            )
+            link_to_collection(
+                container.outliner_entity, parent_collection
+            )
+
+        # clear unused datablock
+        orphans_purge()
+
+        return container, datablocks
 
     @exec_process
     def load(
@@ -800,152 +958,6 @@ class AssetLoader(Loader):
                 "representation": str(representation["_id"]),
             },
         )
-        return container, datablocks
-
-    def replace_container(
-        self,
-        container: OpenpypeContainer,
-        new_libpath: Path,
-        new_container_name: str,
-    ) -> Tuple[OpenpypeContainer, List[bpy.types.ID]]:
-        """Replace container with datablocks from given libpath.
-
-        Args:
-            container (OpenpypeContainer): Container to replace datablocks of.
-            new_libpath (Path): Library path to load datablocks from.
-            new_container_name (str): Name of new container to load.
-
-        Returns:
-            Tuple[OpenpypeContainer, List[bpy.types.ID]]:
-                (Container, List of loaded datablocks)
-        """
-        load_func = self.get_load_function()
-
-        # Update the asset group with maintained contexts.
-        container_metadata = container.get(AVALON_PROPERTY, {})
-
-        # Check is same loader than the previous load
-        same_loader = self.__class__.__name__ == container_metadata.get(
-            "loader"
-        )
-
-        # In case several containers share same library
-        library_multireferenced = any(
-            [
-                c
-                for c in bpy.context.scene.openpype_containers
-                if c != container and c.library is container.library
-            ]
-        )
-
-        # In special configuration, optimization by changing the library
-        if (
-            same_loader
-            and self.load_type in ("INSTANCE", "LINK")
-            and not library_multireferenced
-        ):
-            # Keep current datablocks
-            old_datablocks = {
-                d_ref.datablock for d_ref in container.datablock_refs
-            }
-
-            # Relink library
-            container.library.filepath = new_libpath.as_posix()
-            container.library.reload()
-            container.library.name = new_libpath.name
-
-            # Substitute library to keep reference
-            # if purged because duplicate references
-            container.library = (
-                container.outliner_entity.override_library.reference.library
-                if self.load_type == "LINK"
-                else container.outliner_entity.instance_collection.library
-            )
-
-            datablocks = [
-                d_ref.datablock for d_ref in container.datablock_refs
-            ]
-        else:
-            # Default behaviour to wipe and reload everything
-            # but keeping same container
-            if container.outliner_entity:
-                parent_collection = get_parent_collection(
-                    container.outliner_entity
-                )
-                unlink_from_collection(
-                    container.outliner_entity, parent_collection
-                )
-            else:
-                parent_collection = None
-
-            # Keep current datablocks
-            old_datablocks = {
-                d_ref.datablock
-                for d_ref in container.datablock_refs
-                if d_ref.datablock
-            }
-
-            # Clear container datablocks
-            container.datablock_refs.clear()
-
-            # Rename old datablocks
-            for old_datablock in old_datablocks:
-                old_datablock["original_name"] = old_datablock.name
-                old_datablock.name += ".old"
-
-            # Load new into same container
-            container, datablocks = load_func(
-                new_libpath,
-                new_container_name,
-                container=container,
-            )
-
-            # Old datablocks remap and deletion
-            for old_datablock in old_datablocks:
-                # Find matching new datablock by name without .###
-                new_datablock = next(
-                    (
-                        d
-                        for d in datablocks
-                        if old_datablock["original_name"].rstrip(f".{digits}")
-                        == d.name.rstrip(f".{digits}")
-                    ),
-                    None,
-                )
-
-                # Replace old by new datablock and keep the original name.
-                if new_datablock:
-                    new_datablock.name = old_datablock["original_name"]
-                    old_datablock.user_remap(new_datablock)
-
-                    # Ensure action relink
-                    if (
-                        hasattr(old_datablock, "animation_data")
-                        and old_datablock.animation_data
-                    ):
-                        if not new_datablock.animation_data:
-                            new_datablock.animation_data_create()
-                        new_datablock.animation_data.action = (
-                            old_datablock.animation_data.action
-                        )
-
-            # Restore parent collection if existing
-            if parent_collection:
-                unlink_from_collection(
-                    container.outliner_entity, bpy.context.scene.collection
-                )
-                link_to_collection(
-                    container.outliner_entity, parent_collection
-                )
-
-        # Clear and purge useless datablocks.
-        orphans_purge()
-
-        # Update override library operations from asset objects if available.
-        for obj in get_container_objects(container):
-            if getattr(obj.override_library, "operations_update", None):
-                obj.override_library.operations_update()
-
         return container, datablocks
 
     @exec_process
@@ -1152,37 +1164,6 @@ class BlendLibraryLoader(AssetLoader):
 
         return container, datablocks
 
-    def _containerize_datablocks(
-        self,
-        container_name: str,
-        datablocks: List[bpy.types.ID],
-        container: OpenpypeContainer = None,
-    ) -> OpenpypeContainer:
-        """Associate datablocks to a container. Create one if needed.
-
-        Args:
-            container_name (str): Name of container to be loaded.
-            datablocks (List[bpy.types.ID]): Datablocks to filter and link to
-                container collection
-            container (OpenpypeContainer): Load into existing container.
-                Defaults to None.
-
-        Returns:
-            OpenpypeContainer: Created container
-        """
-        if container:
-            # Add datablocks to container
-            add_datablocks_to_container(datablocks, container)
-
-            # Rename container
-            if container.name != container_name:
-                container.name = container_name
-        else:
-            # Create container if none providen
-            container = create_container(container_name, datablocks)
-
-        return container
-
     def _link_blend(
         self,
         libpath: Path,
@@ -1353,7 +1334,6 @@ class BlendLibraryLoader(AssetLoader):
             Tuple[OpenpypeContainer, List[bpy.types.ID]]:
                 (Container, List of loaded datablocks)
         """
-        load_func = self.get_load_function()
 
         # Update the asset group with maintained contexts.
         container_metadata = container.get(AVALON_PROPERTY, {})
@@ -1378,11 +1358,6 @@ class BlendLibraryLoader(AssetLoader):
             and self.load_type in ("INSTANCE", "LINK")
             and not library_multireferenced
         ):
-            # Keep current datablocks
-            old_datablocks = {
-                d_ref.datablock for d_ref in container.datablock_refs
-            }
-
             # Relink library
             container.library.filepath = new_libpath.as_posix()
             container.library.reload()
@@ -1399,64 +1374,14 @@ class BlendLibraryLoader(AssetLoader):
             datablocks = [
                 d_ref.datablock for d_ref in container.datablock_refs
             ]
+
+            # Clear and purge useless datablocks.
+            orphans_purge()
+
         else:
-            # Default behaviour to wipe and reload everything
-            # but keeping same container
-            if container.outliner_entity:
-                parent_collection = get_parent_collection(
-                    container.outliner_entity
-                )
-            else:
-                parent_collection = None
-
-            # Keep current datablocks
-            old_datablocks = {
-                d_ref.datablock for d_ref in container.datablock_refs
-            }
-
-            # Clear container datablocks
-            container.datablock_refs.clear()
-
-            # Load new into same container
-            container, datablocks = load_func(
-                new_libpath,
-                new_container_name,
-                container=container,
+            container, datablocks = super().replace_container(
+                container, new_libpath, new_container_name
             )
-
-            # Old datablocks remap and deletion
-            for old_datablock in old_datablocks:
-                # Find matching new datablock by name without .###
-                new_datablock = next(
-                    (
-                        d
-                        for d in datablocks
-                        if old_datablock.name.rstrip(f".{digits}")
-                        == d.name.rstrip(f".{digits}")
-                    ),
-                    None,
-                )
-
-                # Replace old by new datablock and keep the original name.
-                if new_datablock:
-                    original_datablock_name = old_datablock.name
-                    old_datablock.name += ".old"
-                    new_datablock.name = original_datablock_name
-                    old_datablock.user_remap(new_datablock)
-
-            # Restore parent collection if existing
-            if parent_collection:
-                unlink_from_collection(
-                    container.outliner_entity,
-                    bpy.context.scene.collection
-                )
-                link_to_collection(
-                    container.outliner_entity,
-                    parent_collection
-                )
-
-        # Clear and purge useless datablocks.
-        orphans_purge()
 
         # Update override library operations from asset objects if available.
         for obj in get_container_objects(container):
