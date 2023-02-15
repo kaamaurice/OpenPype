@@ -276,7 +276,12 @@ def build_anim(project_name, asset_name):
         asset_name (str):  The current asset name from OpenPype Session.
     """
 
-    load_subset(project_name, asset_name, "layoutMain", "Link")
+    layout_container, _layout_datablocks = load_subset(project_name, asset_name, "layoutMain", "Link")
+    
+    # Make container publishable, expose its content
+    bpy.ops.scene.make_container_publishable(container_name=layout_container.name)
+
+    # Load camera
     cam_container, _cam_datablocks = load_subset(
         project_name, asset_name, "cameraMain", "AppendCamera"
     )
