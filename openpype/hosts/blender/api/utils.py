@@ -74,7 +74,7 @@ def get_all_outliner_children(
     if not entity:
         return set()
     elif not isinstance(entity, tuple(BL_OUTLINER_TYPES)):
-        raise ValueError(
+        raise TypeError(
             f"{entity} is not an accepted outliner type: {BL_OUTLINER_TYPES}"
         )
     elif hasattr(entity, "all_objects"):
