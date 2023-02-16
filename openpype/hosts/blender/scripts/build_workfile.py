@@ -217,24 +217,17 @@ def build_layout(project_name, asset_name):
                 project_name, env_asset_name, "cameraMain", "Append"
             )
 
-            # Clean cam container from review collection
-            # NOTE meant to be removed ASAP
-            for i, d_ref in reversed(
-                list(enumerate(cam_container.datablock_refs))
-            ):
-                if isinstance(
-                    d_ref.datablock, bpy.types.Collection
-                ) and d_ref.datablock.name.endswith("reviewMain"):
-                    bpy.data.collections.remove(d_ref.datablock)
-                    cam_container.datablock_refs.remove(i)
-
-            # Keep camera collection
-            camera_collection = cam_container.outliner_entity
-
             # Make cam container publishable
             bpy.ops.scene.make_container_publishable(
                 container_name=cam_container.name,
                 convert_to_current_asset=True,
+            )
+
+            # Keep camera collection
+            camera_collection = (
+                bpy.context.scene.openpype_instances[-1]
+                .datablock_refs[0]
+                .datablock
             )
     except RuntimeError:
         camera_collection = None
