@@ -21,7 +21,12 @@ class ExtractBlendAnimation(ExtractBlend):
         self.log.info("Performing extraction...")
 
         # Deactivate preview range
-        bpy.context.scene.use_preview_range = False
+        bpy.types.Scene.has_preview_range = bpy.props.BoolProperty(
+            name="Has Preview Range",
+        )
+        scene = bpy.context.scene
+        scene.has_preview_range = scene.use_preview_range
+        scene.use_preview_range = False
 
         # Keep animation assignations for auto reassign at loading
         for datablock in instance:
