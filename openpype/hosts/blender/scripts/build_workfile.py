@@ -1,4 +1,5 @@
 import os
+from time import sleep
 from typing import Set
 import bpy
 
@@ -105,7 +106,7 @@ def load_casting(project_name, shot_name) -> Set[OpenpypeContainer]:
     shot = gazu.shot.get_shot(shot_data["zou"]["id"])
     casting = gazu.casting.get_shot_casting(shot)
 
-    containers = set()
+    containers = []
     for actor in casting:
         for _ in range(actor["nb_occurences"]):
             if actor["asset_type_name"] == "Environment":
@@ -116,7 +117,8 @@ def load_casting(project_name, shot_name) -> Set[OpenpypeContainer]:
                 container, _datablocks = load_subset(
                     project_name, actor["asset_name"], subset_name, "Link"
                 )
-                containers.add(container)
+                containers.append(container)
+                sleep(1)  # TODO blender is too fast for windows
             except TypeError:
                 print(f"Cannot load {actor['asset_name']} {subset_name}.")
 
@@ -178,6 +180,7 @@ def build_layout(project_name, asset_name):
 
         # Link loaded containers to layout collection
         for c in containers:
+            sleep(1)  # TODO blender is too fast for windows
             layout_instance.datablock_refs[0].datablock.children.link(
                 c.outliner_entity
             )
@@ -272,10 +275,7 @@ def build_anim(project_name, asset_name):
     layout_container, _layout_datablocks = load_subset(project_name, asset_name, "layoutMain", "Link")
     
     # Make container publishable, expose its content
-    bpy.ops.scene.make_container_publishable(
-        container_name=layout_container.name,
-        convert_to_current_asset=False,
-    )
+    bpy.ops.scene.make_container_publishable(container_name=layout_container.name)
 
     # Load camera
     cam_container, _cam_datablocks = load_subset(
@@ -302,10 +302,7 @@ def build_anim(project_name, asset_name):
     )
 
     # Make cam container publishable
-    bpy.ops.scene.make_container_publishable(
-        container_name=cam_container.name,
-        convert_to_current_asset=False,
-    )
+    bpy.ops.scene.make_container_publishable(container_name=cam_container.name)
 
     for obj in bpy.context.scene.objects:
         # Select camera from cameraMain instance to link with the review.
@@ -397,6 +394,10 @@ def build_workfile():
 
     else:
         return False
+    
+    # Auto save
+    if bpy.data.filepath:
+        bpy.ops.wm.save_mainfile()
 
     return True
 
