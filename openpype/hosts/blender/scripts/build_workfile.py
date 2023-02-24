@@ -272,7 +272,10 @@ def build_anim(project_name, asset_name):
     layout_container, _layout_datablocks = load_subset(project_name, asset_name, "layoutMain", "Link")
     
     # Make container publishable, expose its content
-    bpy.ops.scene.make_container_publishable(container_name=layout_container.name)
+    bpy.ops.scene.make_container_publishable(
+        container_name=layout_container.name,
+        convert_to_current_asset=False,
+    )
 
     # Load camera
     cam_container, _cam_datablocks = load_subset(
@@ -299,7 +302,10 @@ def build_anim(project_name, asset_name):
     )
 
     # Make cam container publishable
-    bpy.ops.scene.make_container_publishable(container_name=cam_container.name)
+    bpy.ops.scene.make_container_publishable(
+        container_name=cam_container.name,
+        convert_to_current_asset=False,
+    )
 
     for obj in bpy.context.scene.objects:
         # Select camera from cameraMain instance to link with the review.
