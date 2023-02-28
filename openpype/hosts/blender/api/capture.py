@@ -4,6 +4,7 @@ Playblasting with independent viewport, camera and display options
 
 """
 import contextlib
+import time
 import bpy
 
 from .lib import maintained_time, maintained_selection, maintained_visibility
@@ -23,8 +24,11 @@ def capture(
     focus=None,
     maintain_aspect_ratio=True,
     overwrite=False,
+    render_mode=False,
+    exec_context="EXEC_DEFAULT",
     image_settings=None,
     display_options=None,
+    **kwargs
 ):
     """Playblast in an independent windows
 
@@ -99,13 +103,47 @@ def capture(
         stack.enter_context(applied_image_settings(window, image_settings))
 
         with context_override(window=window):
-            bpy.ops.render.opengl(
-                animation=True,
-                render_keyed_only=False,
-                sequencer=False,
-                write_still=False,
-                view_context=True,
-            )
+            if render_mode:
+                bpy.ops.render.render(
+                    exec_context,
+                    animation=True,
+                    write_still=False,
+                    use_viewport=True,
+                )
+            else:
+                bpy.ops.render.opengl(
+                    exec_context,
+                    animation=True,
+                    render_keyed_only=False,
+                    sequencer=False,
+                    write_still=False,
+                    view_context=True,
+                )
+
+            if exec_context.startswith("INVOKE"):
+                globals()["capture_completed"] = None
+
+                def render_complete_handler(*args):
+                    globals()["capture_completed"] = True
+                    bpy.app.handlers.render_complete.remove(
+                        render_complete_handler)
+
+                def render_cancel_handler(*args):
+                    globals()["capture_completed"] = False
+                    bpy.app.handlers.render_complete.remove(render_cancel_handler)
+
+                bpy.app.handlers.render_complete.append(render_complete_handler)
+                bpy.app.handlers.render_cancel.append(render_cancel_handler)
+
+                while globals()["capture_completed"] is None:
+                    time.sleep(2)
+                    bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+                    print("operators", list(bpy.context.window_manager.operators))
+
+                time.sleep(10)
+                print("operators", list(bpy.context.window_manager.operators))
+                
+                del globals()["capture_completed"]
 
     return filename
 

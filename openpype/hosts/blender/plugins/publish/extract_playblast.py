@@ -1,11 +1,12 @@
 import os
+import time
 import clique
 
 import bpy
 
 import pyblish.api
 import openpype.api
-from openpype.hosts.blender.api import capture
+from openpype.hosts.blender.api import capture, plugin
 from openpype.hosts.blender.api.lib import maintained_time
 
 
@@ -65,6 +66,8 @@ class ExtractPlayblast(openpype.api.Extractor):
                 "filename": path,
                 "overwrite": True,
                 "isolate": isolate,
+                "exec_context": "INVOKE_DEFAULT",
+                "render_mode": True,
             }
         )
         preset.setdefault(
