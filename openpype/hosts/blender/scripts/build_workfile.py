@@ -176,11 +176,13 @@ def build_layout(project_name, asset_name):
 
     # Load casting from kitsu breakdown.
     try:
-        containers = load_casting(project_name, asset_name)
+        load_casting(project_name, asset_name)
+
+        # NOTE cannot rely on containers from load_casting, memory is shuffled
+        containers = bpy.context.scene.openpype_containers
 
         # Link loaded containers to layout collection
         for c in containers:
-            sleep(1)  # TODO blender is too fast for windows
             layout_instance.datablock_refs[0].datablock.children.link(
                 c.outliner_entity
             )
