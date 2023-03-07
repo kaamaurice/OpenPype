@@ -234,6 +234,11 @@ class RecursiveSortFilterProxyModel(QtCore.QSortFilterProxyModel):
             row, parent_index
         )
 
+    def __init__(self, *args, **kwargs):
+        super(RecursiveSortFilterProxyModel, self).__init__(*args, **kwargs)
+        if hasattr(self, "setRecursiveFilteringEnabled"):
+            self.setRecursiveFilteringEnabled(True)
+
 
 class ProjectModel(QtGui.QStandardItemModel):
     def __init__(
