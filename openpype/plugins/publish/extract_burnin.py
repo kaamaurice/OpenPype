@@ -38,6 +38,7 @@ class ExtractBurnin(publish.Extractor):
     hosts = [
         "nuke",
         "maya",
+        "blender",
         "shell",
         "hiero",
         "premiere",

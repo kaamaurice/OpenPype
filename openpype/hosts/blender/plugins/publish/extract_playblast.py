@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import clique
 
 import bpy
@@ -12,8 +13,7 @@ from openpype.hosts.blender.api.lib import maintained_time
 class ExtractPlayblast(openpype.api.Extractor):
     """Extract viewport playblast.
 
-    Takes review camera and creates review Quicktime video based on viewport
-    capture.
+    Takes review camera and creates review based on viewport capture.
 
     """
 
@@ -62,7 +62,7 @@ class ExtractPlayblast(openpype.api.Extractor):
                 "camera": camera,
                 "start_frame": start,
                 "end_frame": end,
-                "filename": path,
+                "filepath": path,
                 "overwrite": True,
                 "isolate": isolate,
             }
@@ -98,13 +98,14 @@ class ExtractPlayblast(openpype.api.Extractor):
             path = capture(**preset)
 
         self.log.debug(f"playblast path {path}")
+        ext = Path(path).suffix[1:]
 
         # if only one frame
         if end == start:
             files = next(
                 (
                     frame for frame in os.listdir(stagingdir)
-                    if frame.endswith(".png")
+                    if frame.startswith(filename) and frame.endswith(ext)
                 ),
                 None
             )
@@ -116,7 +117,7 @@ class ExtractPlayblast(openpype.api.Extractor):
             collected_files = os.listdir(stagingdir)
             collections, _ = clique.assemble(
                 collected_files,
-                patterns=[f"{filename}\\.{clique.DIGITS_PATTERN}\\.png$"],
+                patterns=[f"{filename}\\.{clique.DIGITS_PATTERN}\\.{ext}$"],
             )
 
             if len(collections) > 1:
@@ -130,7 +131,7 @@ class ExtractPlayblast(openpype.api.Extractor):
                 )
 
             frame_collection = collections[0]
-            self.log.info(f"We found collection of interest {frame_collection}")
+            self.log.info(f"Found collection of interest {frame_collection}")
             files = list(frame_collection)
 
         instance.data.setdefault("representations", [])
@@ -140,8 +141,8 @@ class ExtractPlayblast(openpype.api.Extractor):
             tags.append("delete")
 
         representation = {
-            "name": "png",
-            "ext": "png",
+            "name": ext,
+            "ext": ext,
             "files": files,
             "stagingDir": stagingdir,
             "frameStart": start,

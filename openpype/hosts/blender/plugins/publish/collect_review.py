@@ -73,8 +73,11 @@ class CollectReview(pyblish.api.InstancePlugin):
 
             task = legacy_io.Session.get("AVALON_TASK")
 
+            subset = instance.data["subset"]
+            subset = subset[0].upper() + subset[1:]
+
             instance.data.update({
-                "subset": f"{task}Review",
+                "subset": f"{task}{subset}",
                 "review_camera": camera,
                 "frameStart": instance.context.data["frameStart"],
                 "frameEnd": instance.context.data["frameEnd"],

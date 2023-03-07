@@ -3,6 +3,7 @@
 Playblasting with independent viewport, camera and display options
 
 """
+from pathlib import Path
 import contextlib
 import bpy
 
@@ -14,7 +15,7 @@ def capture(
     camera=None,
     width=None,
     height=None,
-    filename=None,
+    filepath=None,
     start_frame=None,
     end_frame=None,
     step_frame=None,
@@ -32,7 +33,7 @@ def capture(
         camera (str, optional): Name of camera, defaults to "Camera"
         width (int, optional): Width of output in pixels
         height (int, optional): Height of output in pixels
-        filename (str, optional): Name of output file path. Defaults to current
+        filepath (str, optional): Name of output file path. Defaults to current
             render output path.
         start_frame (int, optional): Defaults to current start frame.
         end_frame (int, optional): Defaults to current end frame.
@@ -55,7 +56,7 @@ def capture(
 
     # Ensure camera exists.
     if camera not in scene.objects and camera != "AUTO":
-        raise RuntimeError("Camera does not exist: {0}".format(camera))
+        raise RuntimeError(f"Camera does not exist: {camera}")
 
     # Ensure resolution.
     if width and height:
@@ -75,15 +76,21 @@ def capture(
         step_frame = 1
     frame_range = (start_frame, end_frame, step_frame)
 
-    if filename is None:
-        filename = scene.render.filepath
+    if filepath is None:
+        filepath = scene.render.filepath
+
+    filepath = Path(filepath)
+    if filepath.suffix:
+        filepath = filepath.parent.joinpath(filepath.stem)
 
     render_options = {
-        "filepath": "{}.".format(filename.rstrip(".")),
+        "filepath": f"{filepath}.",
         "resolution_x": width,
         "resolution_y": height,
         "use_overwrite": overwrite,
     }
+
+    image_settings = image_settings or ImageSettings.copy()
 
     with contextlib.ExitStack() as stack:
         stack.enter_context(maintained_time())
@@ -107,7 +114,9 @@ def capture(
                 view_context=True,
             )
 
-    return filename
+    return filepath.with_suffix(
+        get_extension_from_image_settings(image_settings)
+    ).as_posix()
 
 
 ImageSettings = {
@@ -122,6 +131,51 @@ ImageSettings = {
         "use_max_b_frames": False,
     },
 }
+
+FILE_EXTENSIONS = {
+    "JPEG": ".jpg",
+    "JPEG2000": ".jpg",
+    "TARGA": ".tga",
+    "TARGA_RAW": ".tga",
+    "OPEN_EXR": ".exr",
+    "OPEN_EXR_MULTILAYER": ".exr",
+    "AVI_JPEG": ".avi",
+    "AVI_RAW": ".avi",
+    "FFMcPEG": {
+        "QUICKTIME": ".mov",
+        "MPEG4": ".mp4",
+        "MPEG2": ".mpg",
+        "MPEG1": ".mpg",
+        "FLASH": ".flv",
+    },
+}
+
+def get_extension_from_image_settings(image_settings):
+    """Get the extension output from the preset image settings based on
+    file format and ffmpeg format.
+
+    Args:
+        image_settings (dict): The image settings
+
+    Returns:
+        str: The extension.
+    """
+    file_format = image_settings.get("file_format")
+
+    if file_format == "FFMPEG":
+        if image_settings.get("ffmpeg"):
+            ffmpeg_format = image_settings.get("format")
+            if ffmpeg_format in FILE_EXTENSIONS["FFMPEG"]:
+                return FILE_EXTENSIONS["FFMPEG"][ffmpeg_format]
+            if ffmpeg_format:
+                return "." + ffmpeg_format.lower()
+
+    elif file_format in FILE_EXTENSIONS:
+        return FILE_EXTENSIONS[file_format]
+    elif file_format:
+        return "." + file_format.lower()
+
+    return ""
 
 
 def isolate_objects(window, objects, focus=None):
@@ -230,7 +284,6 @@ def applied_render_options(window, options):
 def applied_image_settings(window, options):
     """Context manager to override image settings."""
 
-    options = options or ImageSettings.copy()
     ffmpeg = options.pop("ffmpeg", {})
     render = window.scene.render
 

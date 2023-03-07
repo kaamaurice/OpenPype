@@ -1,13 +1,14 @@
 import os
+from pathlib import Path
 import glob
+
+import bpy
 
 import pyblish.api
 import openpype.api
 from openpype.hosts.blender.api import capture
 from openpype.hosts.blender.api.lib import maintained_time
 from openpype.hosts.blender.api.plugin import get_children_recursive
-
-import bpy
 
 
 class ExtractThumbnail(openpype.api.Extractor):
@@ -74,7 +75,7 @@ class ExtractThumbnail(openpype.api.Extractor):
                 "camera": camera,
                 "start_frame": start,
                 "end_frame": start,
-                "filename": path,
+                "filepath": path,
                 "overwrite": True,
                 "isolate": isolate,
                 "focus": focus,
@@ -109,9 +110,9 @@ class ExtractThumbnail(openpype.api.Extractor):
         with maintained_time():
             path = capture(**preset)
 
-        thumbnail = os.path.basename(self._fix_output_path(path))
+        thumbnail_path = self._output_path(path)
 
-        self.log.info(f"thumbnail: {thumbnail}")
+        self.log.info(f"thumbnail: {thumbnail_path}")
 
         instance.data.setdefault("representations", [])
 
@@ -123,20 +124,25 @@ class ExtractThumbnail(openpype.api.Extractor):
 
         representation = {
             "name": "thumbnail",
-            "ext": "jpg",
-            "files": thumbnail,
+            "ext": thumbnail_path.suffix.lstrip("."),
+            "files": thumbnail_path.name,
             "stagingDir": stagingdir,
             "thumbnail": True,
             "tags": tags,
         }
         instance.data["representations"].append(representation)
 
-    def _fix_output_path(self, filepath):
+    def _output_path(self, filepath):
         """Workaround to return correct filepath.
 
-        To workaround this we just glob.glob() for any file extensions and
+        To workaround this we just glob() for any file extensions and
         assume the latest modified file is the correct file and return it.
 
+        Args:
+            filepath (str): The playblast output filepath.
+
+        Returns:
+            Path: The correct filepath.
         """
         # Catch cancelled playblast
         if filepath is None:
@@ -146,8 +152,10 @@ class ExtractThumbnail(openpype.api.Extractor):
             )
             return None
 
-        if not os.path.exists(filepath):
-            files = glob.glob(f"{filepath}.*.jpg")
+        filepath = Path(filepath)
+
+        if not filepath.exists():
+            files = filepath.parent.glob(f"{filepath.stem}.*{filepath.suffix}")
 
             if not files:
                 raise RuntimeError(f"Couldn't find playblast from: {filepath}")
