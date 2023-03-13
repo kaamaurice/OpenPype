@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Set, Tuple
 
 import bpy
-import openpype.api
+import openpype.lib
 
 from openpype.pipeline import (
     legacy_io,
@@ -213,7 +213,7 @@ class ExtractBlend(publish.Extractor):
             # Store the hashes from hash to destination to include in the
             # database
             # NOTE Keep source hash system in case HARDLINK system works again
-            texture_hash = openpype.api.source_hash(sourcepath)
+            texture_hash = openpype.lib.source_hash(sourcepath)
             hashes[texture_hash] = destination.as_posix()
 
             # Remap source image to resources directory
@@ -239,7 +239,7 @@ class ExtractBlend(publish.Extractor):
         Returns: Reference type, Texture hash
         """
         # Hash source texture to match if already published
-        texture_hash = openpype.api.source_hash(filepath.as_posix())
+        texture_hash = openpype.lib.source_hash(filepath.as_posix())
 
         # If source has been published before with the same settings,
         # then don't reprocess but hardlink from the original
