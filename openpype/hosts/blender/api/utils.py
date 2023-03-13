@@ -1,4 +1,5 @@
 """Shared functionalities for Blender files data manipulation."""
+from pathlib import Path
 from typing import List, Optional, Set, Union, Iterator
 from collections.abc import Iterable
 
@@ -23,6 +24,9 @@ BL_TYPE_DATAPATH = (  # TODO rename DATACOL
         bpy.types.Action: "actions",
         bpy.types.Armature: "armatures",
         bpy.types.Material: "materials",
+        bpy.types.GeometryNodeTree: "node_groups",
+        bpy.types.ParticleSettings: "particles",
+        bpy.types.World: "worlds",
     }
 )
 # Match Blender type to an ICON for display
@@ -33,6 +37,9 @@ BL_TYPE_ICON = {
     bpy.types.Action: "ACTION",
     bpy.types.Armature: "ARMATURE_DATA",
     bpy.types.Material: "MATERIAL_DATA",
+    bpy.types.GeometryNodeTree: "NODETREE",
+    bpy.types.ParticleSettings: "PARTICLES",
+    bpy.types.World: "WORLD_DATA",
 }
 # Types which can be handled through the outliner
 BL_OUTLINER_TYPES = frozenset((bpy.types.Collection, bpy.types.Object))
@@ -312,3 +319,34 @@ def transfer_stack(
             }
             for attr in attributes:
                 setattr(target_data, attr, getattr(stack_datablock, attr))
+
+
+def make_paths_absolute(source_filepath: Path = None):
+    """Make all paths absolute for datablock in current blend file.
+
+    Args:
+        source_filepath (Path, optional): Filepath to remap paths from,
+            in case file copy has been executed without paths remapping.
+            Defaults to None.
+    """
+    # In case no source filepath try naive system
+    if not source_filepath:
+        bpy.ops.file.make_paths_absolute()
+        return
+
+    # Resolve path from source filepath with the relative filepath
+    datablocks_with_filepath = list(bpy.data.libraries) + list(bpy.data.images)
+    for datablock in datablocks_with_filepath:
+        try:
+            if datablock and datablock.filepath.startswith("//"):
+                datablock.filepath = str(
+                    Path(
+                        bpy.path.abspath(
+                            datablock.filepath,
+                            start=source_filepath.parent,
+                        )
+                    ).resolve()
+                )
+                datablock.reload()
+        except RuntimeError as e:
+            print(e)

@@ -19,6 +19,7 @@ class ValidateCameraZeroKeyframe(pyblish.api.InstancePlugin):
     order = ValidateContentsOrder
     hosts = ["blender"]
     families = ["camera"]
+    version = (0, 1, 0)
     label = "Zero Keyframe"
     actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
 

@@ -1,7 +1,9 @@
 import os
 import sys
 import traceback
-from typing import Callable, Dict, List, Optional
+from pathlib import Path
+from datetime import datetime
+from typing import Callable, Dict, Iterator, List, Optional
 
 import bpy
 from openpype.hosts.blender.api import utils
@@ -11,7 +13,8 @@ from . import ops, properties, ui
 
 import pyblish.api
 
-from openpype.client import get_asset_by_name
+from openpype.lib.dateutils import get_timestamp
+from openpype.client.entities import get_asset_by_name
 from openpype.settings import get_project_settings
 from openpype.pipeline import (
     legacy_io,
@@ -27,6 +30,7 @@ from openpype.lib import (
     emit_event
 )
 import openpype.hosts.blender
+from .workio import current_file, check_workfile_up_to_date
 
 HOST_DIR = os.path.dirname(os.path.abspath(openpype.hosts.blender.__file__))
 PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
@@ -138,11 +142,19 @@ def set_use_file_compression():
 def on_new():
     set_start_end_frames()
     set_use_file_compression()
+    bpy.types.Scene.is_workfile_up_to_date= bpy.props.BoolProperty(
+        name="Is Workfile Up To Date",
+    )
 
 
 def on_open():
     set_start_end_frames()
     set_use_file_compression()
+    if hasattr(
+        bpy.types, bpy.ops.wm.check_workfile_up_to_date.idname()
+    ):
+        bpy.ops.wm.check_workfile_up_to_date("INVOKE_DEFAULT")
+
 
 
 @bpy.app.handlers.persistent
@@ -213,6 +225,22 @@ def _register_events():
     register_event_callback("taskChanged", _on_task_changed)
     log.info("Installed event callback for 'taskChanged'...")
 
+
+def _discover_gui() -> Optional[Callable]:
+    """Return the most desirable of the currently registered GUIs"""
+
+    # Prefer last registered
+    guis = reversed(pyblish.api.registered_guis())
+
+    for gui in guis:
+        try:
+            gui = __import__(gui).show
+        except (ImportError, AttributeError):
+            continue
+        else:
+            return gui
+
+    return None
 
 
 def metadata_update(node: bpy.types.bpy_struct_meta_idprop, data: Dict):
