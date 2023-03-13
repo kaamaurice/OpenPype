@@ -4,12 +4,12 @@ import clique
 import bpy
 
 import pyblish.api
-import openpype.api
+from openpype.pipeline import publish
 from openpype.hosts.blender.api import capture
 from openpype.hosts.blender.api.lib import maintained_time
 
 
-class ExtractPlayblast(openpype.api.Extractor):
+class ExtractPlayblast(publish.Extractor):
     """Extract viewport playblast.
 
     Takes review camera and creates review Quicktime video based on viewport
