@@ -50,17 +50,19 @@ class ExtractBlend(publish.Extractor):
 
         # Set object mode
         with plugin.context_override(
-            active=next(  # Get first object that is not library override
+            # Get first visible object that is not library override
+            active=next(
                 (
                     o
                     for o in bpy.context.scene.objects
-                    if o.override_library is None
+                    if o.override_library is None and o.visible_get()
                 ),
                 None,
             ),
             selected=bpy.context.scene.objects,
         ):
-            bpy.ops.object.mode_set()
+            if bpy.ops.object.mode_set.poll():  # last safty check
+                bpy.ops.object.mode_set()
 
         # Set camera hide in viewport back to its original value
         if is_camera_hidden_viewport:
