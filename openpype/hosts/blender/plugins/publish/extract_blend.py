@@ -55,9 +55,7 @@ class ExtractBlend(publish.Extractor):
                     active=obj,
                     selected=bpy.context.scene.objects,
                 ):
-                    if bpy.ops.object.mode_set.poll():  # safty check
-                        bpy.ops.object.mode_set()
-                        break
+                    bpy.ops.object.mode_set()
 
         # Set camera hide in viewport back to its original value
         if is_camera_hidden_viewport:
