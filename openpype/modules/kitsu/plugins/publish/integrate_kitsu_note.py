@@ -9,9 +9,7 @@ class IntegrateKitsuNote(pyblish.api.ContextPlugin):
 
     order = pyblish.api.IntegratorOrder
     label = "Kitsu Note and Status"
-    families = ["render", "kitsu"]
-
-    # status settings
+    families = ["render", "review"]
     set_status_note = False
     note_status_shortname = "wfa"
     status_change_conditions = {
@@ -50,11 +48,8 @@ class IntegrateKitsuNote(pyblish.api.ContextPlugin):
 
     def process(self, context):
         for instance in context:
-            # Check if instance is a review by checking its family
-            # Allow a match to primary family or any of families
-            families = set([instance.data["family"]] +
-                           instance.data.get("families", []))
-            if "review" not in families:
+            # Skip if not in families
+            if instance.data.get("family") not in self.families:
                 continue
 
             kitsu_task = instance.data.get("kitsu_task")
