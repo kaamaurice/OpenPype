@@ -19,7 +19,7 @@ class UnpauseSyncServer(pyblish.api.ContextPlugin):
 
         # Wait for all started futures to finish
         for instance in context:
-            for future in instance.data.get("futures", []):
+            for future in instance.data.get("representations_futures", []):
                 while future.running():
                     self.log.debug(f"Waiting for {future} to finish...")
                     sleep(1)

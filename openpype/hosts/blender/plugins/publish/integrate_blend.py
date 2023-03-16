@@ -51,7 +51,7 @@ class IntegrateBlenderAsset(pyblish.api.InstancePlugin):
         representations.update(instance.data.get("hero_representations", {}))
 
         # Run commands for all published representations
-        instance.data.setdefault("futures", [])
+        instance.data.setdefault("representations_futures", [])
         for representation in representations.values():
             representation = representation["representation"]
             published_path = representation.get("data", {}).get("path")
@@ -117,7 +117,7 @@ class IntegrateBlenderAsset(pyblish.api.InstancePlugin):
                 f.add_done_callback(partial(callback, repre_id))
 
                 # Keep future for waiting for it to finish at unpause
-                instance.data["futures"].append(f)
+                instance.data["representations_futures"].append(f)
                 
         # Go asynchrone
         pool.shutdown(wait=False)
