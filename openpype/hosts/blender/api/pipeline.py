@@ -14,7 +14,12 @@ from . import ops, properties, ui
 import pyblish.api
 
 from openpype.lib.dateutils import get_timestamp
-from openpype.client.entities import get_asset_by_name
+from openpype.client.entities import (
+    get_asset_by_name,
+    get_last_version_by_subset_id,
+    get_matching_subset_id,
+    get_representation_by_task,
+)
 from openpype.settings import get_project_settings
 from openpype.pipeline import (
     legacy_io,
@@ -29,6 +34,7 @@ from openpype.lib import (
     register_event_callback,
     emit_event
 )
+from openpype.modules.base import ModulesManager
 import openpype.hosts.blender
 from .workio import current_file, check_workfile_up_to_date
 
@@ -139,6 +145,87 @@ def set_use_file_compression():
     bpy.context.preferences.filepaths.use_file_compression = compress
 
 
+def get_last_published_workfile_path():
+    sync_server_module = ModulesManager().modules_by_name.get("sync_server")
+    if not sync_server_module or not sync_server_module.enabled:
+        return
+    import openpype.modules.sync_server.sync_server as sync_server
+    project_name = legacy_io.active_project()
+    task_name = legacy_io.Session["AVALON_TASK"]
+    asset_name = legacy_io.Session["AVALON_ASSET"]
+    asset_doc = get_asset_by_name(project_name, asset_name)
+    if not asset_doc:
+        return
+    subset_id = get_matching_subset_id(
+        project_name, task_name, "workfile", asset_doc
+    )
+    if not subset_id:
+        return
+    last_version_doc = get_last_version_by_subset_id(
+        project_name, subset_id, fields=["_id", "name"]
+    )
+    if not last_version_doc:
+        return
+    workfile_representation = get_representation_by_task(
+        project_name,
+        task_name,
+        last_version_doc,
+    )
+    if not workfile_representation:
+        return
+    return sync_server.get_last_published_workfile_path(
+        "blender",
+        project_name,
+        task_name,
+        workfile_representation,
+    )
+
+
+def extrernal_files_paths_remap():
+    datablocks_to_remap = []
+    for data_collection_name in ("libraries", "images"):
+        for datablock in getattr(bpy.data, data_collection_name):
+            if (
+                hasattr(datablock, "filepath")
+                and datablock.filepath
+                and datablock.filepath.startswith("//")
+            ):
+                datablocks_to_remap.append(datablock)
+
+    if datablocks_to_remap:
+        last_published_workfile_path = get_last_published_workfile_path()
+        log.info(
+            f"last_published_workfile_path={last_published_workfile_path}"
+        )
+        for datablock in datablocks_to_remap:
+            try:
+                log.info(
+                    f"{datablock.name}.file={datablock.filepath}"
+                )
+                new_filepath = Path(
+                    bpy.path.abspath(datablock.filepath)
+                ).resolve()
+                if not new_filepath.is_file() and last_published_workfile_path:
+                    new_filepath = Path(
+                        bpy.path.abspath(
+                            datablock.filepath,
+                            start=Path(last_published_workfile_path).parent,
+                        )
+                    ).resolve()
+
+                log.info(
+                    f"new_filepath={new_filepath}"
+                )
+                if new_filepath.is_file():
+                    datablock.filepath = str(new_filepath)
+                    datablock.reload()
+                    log.info(
+                        f"REMAP: {datablock.name}.file={datablock.filepath}"
+                    )
+            except (RuntimeError, ReferenceError, OSError) as err:
+                log.error(err)
+
+
 def on_new():
     set_start_end_frames()
     set_use_file_compression()
@@ -150,6 +237,7 @@ def on_new():
 def on_open():
     set_start_end_frames()
     set_use_file_compression()
+    extrernal_files_paths_remap()
     if hasattr(
         bpy.types, bpy.ops.wm.check_workfile_up_to_date.idname()
     ):
