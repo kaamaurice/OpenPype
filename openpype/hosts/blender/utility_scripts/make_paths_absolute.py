@@ -48,5 +48,8 @@ if __name__ == "__main__":
     else:
         bpy.ops.file.make_paths_absolute()
 
+    # Purge orphaned datablocks
+    bpy.data.orphans_purge()
+
     if bpy.data.filepath:
         bpy.ops.wm.save_mainfile()
