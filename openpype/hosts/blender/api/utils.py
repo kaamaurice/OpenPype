@@ -348,4 +348,4 @@ def make_paths_absolute(source_filepath: Path = None):
         bpy.ops.file.make_paths_absolute()
 
     # Purge orphaned datablocks
-    bpy.data.orphans_purge()
+    bpy.data.orphans_purge(do_recursive=True)
