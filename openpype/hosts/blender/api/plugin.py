@@ -513,7 +513,7 @@ class Creator(LegacyCreator):
 
         Args:
             datablocks (List[bpy.types.ID], optional): Datablocks to process and append to instance. Defaults to None.
-            gather_into_collection (bool): 
+            gather_into_collection (bool):
                 Process outliner gathering of elements under a single collection.
                 Defaults to True.
 
@@ -703,7 +703,7 @@ class AssetLoader(Loader):
                 linked datablocks. Defaults to False.
 
         Returns:
-            Tuple[OpenpypeContainer, Set[bpy.types.ID]]: 
+            Tuple[OpenpypeContainer, Set[bpy.types.ID]]:
                 (Created scene container, Loaded datablocks)
         """
         # Load datablocks from libpath library.
@@ -764,9 +764,12 @@ class AssetLoader(Loader):
                     )
 
                     # Update datablocks because could have been renamed
-                    datablocks = set(
-                        outliner_entity.children_recursive
-                    )
+                    datablocks = {
+                        d
+                        for d in datablocks
+                        if not isinstance(d, tuple(BL_OUTLINER_TYPES))
+                    }
+                    datablocks.update(outliner_entity.children_recursive)
                     if isinstance(outliner_entity, bpy.types.Collection):
                         datablocks.update(set(outliner_entity.all_objects))
                     datablocks.add(outliner_entity)
@@ -946,7 +949,7 @@ class AssetLoader(Loader):
                 Defaults to None.
 
         Returns:
-            Tuple[List[bpy.types.ID], OpenpypeContainer]: 
+            Tuple[List[bpy.types.ID], OpenpypeContainer]:
                 (Created scene container, Linked datablocks)
         """
         container, all_datablocks = self._link_blend(
