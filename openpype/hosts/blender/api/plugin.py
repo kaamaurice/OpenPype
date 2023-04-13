@@ -796,6 +796,7 @@ class AssetLoader(Loader):
 
                 # Substitute name in case renamed with .###
                 container_name = outliner_entity.name
+                container.outliner_entity = outliner_entity
 
         # Put into container
         container = self._containerize_datablocks(
@@ -804,7 +805,6 @@ class AssetLoader(Loader):
 
         # Set data to container
         container.library = bpy.data.libraries.get(libpath.name)
-        container.outliner_entity = outliner_entity
 
         return container, datablocks
 
