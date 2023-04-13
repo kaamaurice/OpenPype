@@ -797,6 +797,8 @@ class AssetLoader(Loader):
 
                 # Substitute name in case renamed with .###
                 container_name = outliner_entity.name
+        else:
+            outliner_entity = None
 
         # Put into container
         container = self._containerize_datablocks(
