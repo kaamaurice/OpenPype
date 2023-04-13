@@ -758,10 +758,6 @@ class AssetLoader(Loader):
                         bpy.context.view_layer
                         # NOTE After BL3.4: do_fully_editable=True
                     )
-                    # Ensure user override NOTE: will be unecessary after BL3.4
-                    override_datablock.override_library.is_system_override = (
-                        False
-                    )
 
                     # Update datablocks because could have been renamed
                     datablocks.add(override_datablock)
@@ -777,6 +773,11 @@ class AssetLoader(Loader):
                             datablocks.update(
                                 set(override_datablock.all_objects)
                             )
+
+                # Ensure user override NOTE: will be unecessary after BL3.4
+                for d in datablocks:
+                    if hasattr(d.override_library, "is_system_override"):
+                        d.override_library.is_system_override = False
 
             # Get the right asset container from imported collections.
             outliner_entity = next(
