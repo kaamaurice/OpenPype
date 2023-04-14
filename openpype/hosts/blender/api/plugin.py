@@ -741,16 +741,31 @@ class AssetLoader(Loader):
             datacol.foreach_set("use_fake_user", seq)
 
         if self.bl_types & BL_OUTLINER_TYPES:
-            # Override datablocks if needed
-            if do_override:
-                # Get datablocks to override, which have no user in the loaded datablocks (orphan at this point)
-                datablocks_to_override = {
+            # Get datablocks to override, which have
+            # no user in the loaded datablocks (orphan at this point)
+            datablocks_to_override = {
                     d
                     for d, users in bpy.data.user_map(
                         subset=datablocks
                     ).items()
                     if not users & datablocks
                 }
+            
+            # Try to get the right asset container from imported collections.
+            # TODO this whole outliner entity is a bad idea
+            # it must be refactored to deal correctly with nested
+            # outliner entities using user_map()
+            outliner_entity = next(
+                (
+                    entity
+                    for entity in datablocks_to_override
+                    if entity.name.startswith(container_name)
+                ),
+                None,
+            )
+
+            # Override datablocks if needed
+            if do_override:
                 datablocks = set()
                 for d in datablocks_to_override:
                     override_datablock = d.override_hierarchy_create(
@@ -758,6 +773,9 @@ class AssetLoader(Loader):
                         bpy.context.view_layer
                         # NOTE After BL3.4: do_fully_editable=True
                     )
+
+                    # Update outliner entity
+                    outliner_entity = override_datablock
 
                     # Update datablocks because could have been renamed
                     datablocks.add(override_datablock)
@@ -778,17 +796,6 @@ class AssetLoader(Loader):
                 for d in datablocks:
                     if hasattr(d.override_library, "is_system_override"):
                         d.override_library.is_system_override = False
-
-            # Get the right asset container from imported collections.
-            outliner_entity = next(
-                (
-                    entity
-                    for entity in list(data_to.collections)
-                    + list(data_to.objects)
-                    if entity.name.startswith(container_name)
-                ),
-                None,
-            )
 
             if outliner_entity:
                 # Set color
