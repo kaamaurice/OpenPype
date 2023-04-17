@@ -750,7 +750,7 @@ class AssetLoader(Loader):
                     ).items()
                     if not users & datablocks
                 }
-            
+
             # Try to get the right asset container from imported collections.
             # TODO this whole outliner entity is a bad idea
             # it must be refactored to deal correctly with nested
