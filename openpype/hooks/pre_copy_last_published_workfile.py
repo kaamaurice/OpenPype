@@ -142,7 +142,7 @@ class CopyLastPublishedWorkfile(PreLaunchHook):
         )
 
         # Copy file and substitute path
-        self.data["last_workfile_path"] = download_last_published_workfile(
+        download_last_workfile_result = download_last_published_workfile(
             host_name,
             project_name,
             asset_name,
@@ -153,6 +153,14 @@ class CopyLastPublishedWorkfile(PreLaunchHook):
             last_version_doc,
             anatomy=anatomy,
             asset_doc=asset_doc,
-        )[0]
+        )
+
+        if not download_last_workfile_result:
+            self.log.debug("Last published workfile download failed.")
+            return
+
+        # Get local last workfile path
+        self.data["last_workfile_path"] = download_last_workfile_result[0]
+
         # Keep source filepath for further path conformation
         self.data["source_filepath"] = published_workfile_path
