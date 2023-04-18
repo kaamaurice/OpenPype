@@ -204,10 +204,8 @@ class ExtractBlend(publish.Extractor):
             # NOTE Keep source hash system in case HARDLINK system works again
             try:
                 texture_hash = source_hash(sourcepath)
-            except FileNotFoundError:
-                self.log.warning(
-                    f"Path not found on disk, skipping remapping: {sourcepath}"
-                )
+            except FileNotFoundError as e:
+                self.log.warning(e)
                 continue
             hashes[texture_hash] = destination.as_posix()
 
