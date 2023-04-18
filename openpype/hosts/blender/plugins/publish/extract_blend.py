@@ -202,7 +202,13 @@ class ExtractBlend(publish.Extractor):
             # Store the hashes from hash to destination to include in the
             # database
             # NOTE Keep source hash system in case HARDLINK system works again
-            texture_hash = source_hash(sourcepath)
+            try:
+                texture_hash = source_hash(sourcepath)
+            except FileNotFoundError:
+                self.log.warning(
+                    f"Path not found on disk, skipping remapping: {sourcepath}"
+                )
+                continue
             hashes[texture_hash] = destination.as_posix()
 
             # Remap source image to resources directory
