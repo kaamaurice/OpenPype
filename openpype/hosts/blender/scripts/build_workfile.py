@@ -734,10 +734,59 @@ def build_anim(project_name, asset_name):
                 use_selection=False,
             )
 
+    animated_objects = set()
     for obj in bpy.context.scene.objects:
         if obj.type == "ARMATURE":
-            # Create animation instance
-            variant_name = obj.name[obj.name.find("RIG_") + 4 :].capitalize()
+            # Create animation instance for rig.
+            variant_name = (
+                obj.name[4].upper() + obj.name[5:]
+                if obj.name.find("RIG_") == 0
+                else obj.name[0].upper() + obj.name[1:]
+            )
+            bpy.ops.scene.create_openpype_instance(
+                creator_name="CreateAnimation",
+                asset_name=asset_name,
+                subset_name=f"animation{variant_name}",
+                datapath="objects",
+                datablock_name=obj.name,
+                use_selection=False,
+            )
+        elif obj.animation_data and obj.animation_data.action:
+            animated_objects.add(obj)
+
+    if animated_objects:
+        # Searching animated object from container.
+        for container in bpy.context.scene.openpype_containers:
+            # Get all objects from container.
+            container_objects = set()
+            for d_ref in container.datablock_refs:
+                if isinstance(d_ref.datablock, bpy.types.Collection):
+                    container_objects.update(d_ref.datablock.all_objects)
+                elif isinstance(d_ref.datablock, bpy.types.Object):
+                    container_objects.add(d_ref.datablock)
+            if not container_objects:
+                continue
+            # Get animation variant name using container short name.
+            trim_idx = container.name.find("_setdress")
+            variant_name = container.name[0].upper() + (
+                container.name[1:trim_idx]
+                if trim_idx > 0
+                else container.name[1:]
+            )
+            # Create animation instance for animated object from container.
+            for obj in container_objects & animated_objects:
+                bpy.ops.scene.create_openpype_instance(
+                    creator_name="CreateAnimation",
+                    asset_name=asset_name,
+                    subset_name=f"animation{variant_name}",
+                    datapath="objects",
+                    datablock_name=obj.name,
+                    use_selection=False,
+                )
+                animated_objects.remove(obj)
+        # Create animation instance for remaining animated object.
+        for obj in animated_objects:
+            variant_name = obj.name[0].upper() + obj.name[1:]
             bpy.ops.scene.create_openpype_instance(
                 creator_name="CreateAnimation",
                 asset_name=asset_name,
