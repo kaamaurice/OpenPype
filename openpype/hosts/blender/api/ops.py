@@ -23,14 +23,14 @@ from openpype.client.entities import (
     get_asset_by_name,
     get_assets,
 )
-from openpype.hosts.blender.api.lib import add_datablocks_to_container, update_scene_containers
+from openpype.hosts.blender.api.lib import add_datablocks_to_container
 from openpype.hosts.blender.api.utils import (
     BL_OUTLINER_TYPES,
     BL_TYPE_DATAPATH,
     build_op_basename,
-    get_all_outliner_children,
     get_parent_collection,
     link_to_collection,
+    unlink_from_collection,
 )
 from openpype.pipeline import legacy_io
 from openpype.pipeline.create.creator_plugins import (
@@ -1159,38 +1159,36 @@ def expose_container_content(container_name: str) -> List[bpy.types.ID]:
         return
 
     new_root_outliner_datablocks = []
+    kept_root_outliner_datablocks = []
     for outliner_datablock in root_outliner_datablocks:
         # If collection, convert it to regular one
-        parent_collection = get_parent_collection(outliner_datablock)
-        substitute_collection = None
         if isinstance(outliner_datablock, bpy.types.Collection):
             outliner_datablock.name += ".old"
+            parent_collection = get_parent_collection(outliner_datablock)
             substitute_collection = bpy.data.collections.new(container_name)
+
+            # Link new substitute collection to parent collection
+            link_to_collection(substitute_collection, parent_collection)
 
             # Link old collection objects to new substitute collection
             link_to_collection(
                 outliner_datablock.objects, substitute_collection
             )
+            # Link old collection children to new substitute collection
+            link_to_collection(
+                outliner_datablock.children, substitute_collection
+            )
 
-            # Link new substitute collection to parent collection
-            parent_collection.children.link(substitute_collection)
+            # Unlink entity from scene
+            unlink_from_collection(outliner_datablock, parent_collection)
+            outliner_datablock.use_fake_user = False
 
             # Keep new collection as root outliner datablock
             new_root_outliner_datablocks.append(substitute_collection)
         else:
-            new_root_outliner_datablocks.append(outliner_datablock)
+            kept_root_outliner_datablocks.append(outliner_datablock)
 
-        # Move objects to either substituted collection or the parent one
-        link_to_collection(
-            outliner_datablock.children,
-            substitute_collection or parent_collection,
-        )
-
-        # Unlink entity from scene
-        parent_collection.children.unlink(outliner_datablock)
-        outliner_datablock.use_fake_user = False
-
-    return new_root_outliner_datablocks
+    return new_root_outliner_datablocks + kept_root_outliner_datablocks
 
 
 class SCENE_OT_ExposeContainerContent(bpy.types.Operator):
