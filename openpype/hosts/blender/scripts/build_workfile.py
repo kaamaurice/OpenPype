@@ -17,6 +17,7 @@ from openpype.client.entities import (
     get_version_by_id,
 )
 from openpype.hosts.blender.api.properties import OpenpypeContainer
+from openpype.hosts.blender.api.lib import add_datablocks_to_container
 from openpype.hosts.blender.api.lib import update_scene_containers
 from openpype.lib.local_settings import get_local_site_id
 from openpype.modules import ModulesManager
@@ -787,15 +788,24 @@ def build_anim(project_name, asset_name):
                 else container.name[1:]
             )
             # Create animation instance for animated object from container.
+            container_animation_instance = None
             for obj in container_objects & animated_objects:
-                bpy.ops.scene.create_openpype_instance(
-                    creator_name="CreateAnimation",
-                    asset_name=asset_name,
-                    subset_name=f"animation{variant_name}",
-                    datapath="objects",
-                    datablock_name=obj.name,
-                    use_selection=False,
-                )
+                if container_animation_instance is None:
+                    bpy.ops.scene.create_openpype_instance(
+                        creator_name="CreateAnimation",
+                        asset_name=asset_name,
+                        subset_name=f"animation{variant_name}",
+                        datapath="objects",
+                        datablock_name=obj.name,
+                        use_selection=False,
+                    )
+                    container_animation_instance = (
+                        bpy.context.scene.openpype_instances[-1]
+                    )
+                else:
+                    add_datablocks_to_container(
+                        obj, container_animation_instance
+                    )
                 animated_objects.remove(obj)
         # Create animation instance for remaining animated object.
         for obj in animated_objects:
