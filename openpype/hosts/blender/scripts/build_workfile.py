@@ -793,7 +793,7 @@ def build_anim(project_name, asset_name):
                     add_datablocks_to_container(
                         obj, container_animation_instance
                     )
-                animated_objects.remove(obj)
+            animated_objects -= container_objects
         # Create animation instance for remaining animated object.
         for obj in animated_objects:
             variant_name = obj.name[0].upper() + obj.name[1:]
