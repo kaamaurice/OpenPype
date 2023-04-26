@@ -140,17 +140,17 @@ def get_parent_collection(
         Optional[bpy.types.Collection]: Parent of entity
     """
     scene_collection = bpy.context.scene.collection
-    if entity.name in scene_collection.children:
+    if entity in scene_collection.children.values():
         return scene_collection
     # Entity is a Collection.
     elif isinstance(entity, bpy.types.Collection):
         for col in scene_collection.children_recursive:
-            if entity.name in col.children:
+            if entity in col.children.values():
                 return col
     # Entity is an Object.
     elif isinstance(entity, bpy.types.Object):
         for col in scene_collection.children_recursive:
-            if entity.name in col.objects:
+            if entity in col.objects.values():
                 return col
 
 
