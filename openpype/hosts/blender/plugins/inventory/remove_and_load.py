@@ -13,7 +13,7 @@ class RemoveAndLoad(InventoryAction):
     """Delete inventory item and reload it."""
 
     label = "Remove and load"
-    icon = 'refresh'
+    icon = "refresh"
 
     def process(self, containers):
         for container in containers:
