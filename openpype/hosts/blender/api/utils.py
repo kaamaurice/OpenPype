@@ -329,7 +329,7 @@ def transfer_stack(
                 a
                 for a in dir(stack_datablock)
                 if not a.startswith("_")
-                and stack_datablock.is_property_readonly(a)
+                and not stack_datablock.is_property_readonly(a)
                 and a not in {
                     "type",
                     "error_location",
