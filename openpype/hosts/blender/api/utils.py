@@ -357,7 +357,6 @@ def make_paths_absolute(source_filepath: Path = None):
         bpy.ops.file.make_paths_absolute()
         return
 
-    remapped_paths = []
     for datablock in list(bpy.data.libraries) + list(bpy.data.images):
         try:
             if datablock and datablock.filepath.startswith("//"):
@@ -369,13 +368,10 @@ def make_paths_absolute(source_filepath: Path = None):
                         )
                     ).resolve()
                 )
-                remapped_paths.append(datablock.filepath)
         except (RuntimeError, ReferenceError, OSError) as e:
             print(e)
 
     bpy.ops.file.make_paths_absolute()
-
-    return remapped_paths
 
 
 def get_root_datablocks(
