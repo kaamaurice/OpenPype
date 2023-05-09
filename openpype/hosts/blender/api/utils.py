@@ -329,8 +329,8 @@ def transfer_stack(
                 a
                 for a in dir(stack_datablock)
                 if not a.startswith("_")
-                and a
-                not in {
+                and stack_datablock.is_property_readonly(a)
+                and a not in {
                     "type",
                     "error_location",
                     "rna_type",
