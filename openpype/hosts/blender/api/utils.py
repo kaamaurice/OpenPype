@@ -329,7 +329,7 @@ def transfer_stack(
                 a
                 for a in dir(stack_datablock)
                 if not a.startswith("_")
-                and a != "bl_rna"
+                and a not in ("bl_rna", "vertex_indices_set")
                 and not stack_datablock.is_property_readonly(a)
             }
             for attr in attributes:
