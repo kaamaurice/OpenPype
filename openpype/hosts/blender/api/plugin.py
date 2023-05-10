@@ -45,7 +45,7 @@ from .lib import (
     add_datablocks_to_container,
     create_container,
     imprint,
-    get_selection
+    get_selection,
 )
 from .pipeline import metadata_update, AVALON_PROPERTY
 
@@ -1207,16 +1207,16 @@ class AssetLoader(Loader):
 
             # Old datablocks remap
             for old_datablock in old_datablocks:
-                # Skip linked datablocks
-                if old_datablock.library:
-                    continue
-
                 # Find matching new datablock by name without .###
+                # but with same type and library or override library state
                 new_datablock = next(
                     (
                         d
                         for d in datablocks
                         if type(d) is type(old_datablock)
+                        and bool(old_datablock.library) == bool(d.library)
+                        and bool(old_datablock.override_library)
+                        == bool(d.override_library)
                         and old_datablock["original_name"].rsplit(".", 1)[0]
                         == d.name.rsplit(".", 1)[0]
                     ),
