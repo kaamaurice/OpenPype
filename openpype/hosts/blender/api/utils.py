@@ -323,7 +323,8 @@ def transfer_stack(
                 )
             else:
                 target_data = target_col.new(stack_datablock.type)
-
+            
+            print("prout", source_datablock, target_datablock, target_col, target_data)
             # Transfer attributes
             attributes = {
                 a

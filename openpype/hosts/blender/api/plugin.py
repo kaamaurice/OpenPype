@@ -692,11 +692,9 @@ class AssetLoader(Loader):
             Tuple[OpenpypeContainer, Set[bpy.types.ID]]:
                 (Created scene container, Loaded datablocks)
         """
-        # Get current datablocks
-        file_current_datablocks = get_all_datablocks()
-
         # Load datablocks from libpath library.
-        loaded_data_collections = set()
+        loaded_data_collections = []
+        loaded_names = []
         with bpy.data.libraries.load(
             libpath.as_posix(), link=link, relative=False
         ) as (
@@ -705,21 +703,31 @@ class AssetLoader(Loader):
         ):
             for bl_type in self.bl_types:
                 data_collection_name = BL_TYPE_DATAPATH.get(bl_type)
+                loaded_datablocks = list(getattr(data_from, data_collection_name))
                 setattr(
                     data_to,
                     data_collection_name,
-                    [
-                        name
-                        for name in getattr(data_from, data_collection_name)
-                    ],
+                    loaded_datablocks,
                 )
 
-                # Keep imported datablocks names
-                loaded_data_collections.add(data_collection_name)
+                # Keep collection with datablocks
+                loaded_data_collections.append((data_collection_name, loaded_datablocks))
 
-        # Convert datablocks names to datablocks references
-        datablocks = get_all_datablocks() - file_current_datablocks
-        for collection_name in loaded_data_collections:
+
+                # Keep loaded datablocks names
+                loaded_names.extend([str(l) for l in loaded_datablocks])
+        
+        # Assign original datablocks names to avoid name conflicts
+        datablocks = set()
+        i = 0
+        for collection_name, loaded_datablocks in loaded_data_collections:
+            for datablock in loaded_datablocks:
+                datablock["original_name"] = loaded_names[i]
+                i += 1
+
+            # Get datablocks
+            datablocks.update(loaded_datablocks)
+
             # Remove fake user from loaded datablocks
             datacol = getattr(bpy.data, collection_name)
             seq = [
@@ -1098,7 +1106,7 @@ class AssetLoader(Loader):
         )
 
         # Clear and purge useless datablocks
-        orphans_purge()
+        # orphans_purge()
 
         return container, datablocks
 
@@ -1137,7 +1145,7 @@ class AssetLoader(Loader):
 
         # Rename old datablocks
         for old_datablock in old_datablocks:
-            old_datablock["original_name"] = old_datablock.name
+            # old_datablock["original_name"] = old_datablock.name
             old_datablock.name += ".old"
             old_datablock.use_fake_user = False
         
@@ -1150,11 +1158,17 @@ class AssetLoader(Loader):
             new_container_name,
             container=container,
         )
+        # print("tata", datablocks, self.bl_types)
 
         # Old datablocks remap
+        # for d in datablocks:
+        #     print(d)
+        #     d["original_name"]
         for old_datablock in old_datablocks:
             # Find matching new datablock by name without .###
             # but with same type and library or override library state
+            # print("toto", old_datablock)
+
             if new_datablock := next(
                 (
                     d
@@ -1163,12 +1177,12 @@ class AssetLoader(Loader):
                     and bool(old_datablock.library) == bool(d.library)
                     and bool(old_datablock.override_library)
                     == bool(d.override_library)
-                    and old_datablock["original_name"].rsplit(".", 1)[0]
-                    == d.name.rsplit(".", 1)[0]
+                    and (old_datablock.get("original_name") and d.get("original_name") and old_datablock.get("original_name") == d["original_name"])
                 ),
                 None,
             ):
-                new_datablock.name = old_datablock["original_name"]
+                print("zaza", old_datablock, new_datablock)
+                # new_datablock.name = old_datablock["original_name"]
                 old_datablock.user_remap(new_datablock)
 
                 # Ensure action relink
@@ -1193,8 +1207,9 @@ class AssetLoader(Loader):
                 # Ensure bones constraints reassignation
                 if hasattr(old_datablock, "pose") and old_datablock.pose:
                     for bone in old_datablock.pose.bones:
-                        if new_bone := new_datablock.pose.bones.get(bone.name):
-                            transfer_stack(bone, "constraints", new_bone)
+                        if new_datablock.pose:
+                            if new_bone := new_datablock.pose.bones.get(bone.name):
+                                transfer_stack(bone, "constraints", new_bone)
 
                 # Ensure drivers reassignation
                 if (
@@ -1300,7 +1315,7 @@ class AssetLoader(Loader):
         )
 
         # Clear and purge useless datablocks
-        orphans_purge()
+        # orphans_purge()
 
         return container, datablocks
 
