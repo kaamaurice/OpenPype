@@ -25,7 +25,7 @@ if __name__ == "__main__":
         nargs="?",
         help="source filepath",
     )
-    args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
+    args = parser.parse_known_args(sys.argv[sys.argv.index("--") + 1:])
 
     if args.source_filepath.is_file():
         remapped_datablocks = make_paths_absolute(args.source_filepath)
