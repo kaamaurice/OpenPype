@@ -677,6 +677,17 @@ def build_anim(project_name, asset_name):
         bpy.data.collections.remove(gdeform_collection)
     create_gdeformer_collection(bpy.context.scene.collection)
 
+    # Get world from setdress
+    setdress_world = None
+    for container in bpy.context.scene.openpype_containers:
+        if container.get("avalon", {}).get("family") == "setdress":
+            for d_ref in container.datablock_refs:
+                if isinstance(d_ref.datablock, bpy.types.World):
+                    setdress_world = d_ref.datablock
+
+    # Assign setdress or last loaded world
+    bpy.context.scene.world = setdress_world or bpy.data.worlds[-1]
+
     # Load camera
     try:
         cam_container, _cam_datablocks = load_subset(
