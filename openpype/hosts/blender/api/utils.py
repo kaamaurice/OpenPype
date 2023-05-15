@@ -354,10 +354,9 @@ def make_paths_absolute(source_filepath: Path = None):
         if not isinstance(data_collection, bpy.types.bpy_prop_collection):
             continue
         for datablock in data_collection.values():
-            if not hasattr(datablock, "filepath"):
-                break
             if (
-                not datablock.is_property_readonly("filepath")
+                hasattr(datablock, "filepath")
+                and not datablock.is_property_readonly("filepath")
                 and isinstance(datablock.filepath, str)
                 and datablock.filepath.startswith("//")
             ):
@@ -376,8 +375,8 @@ def make_paths_absolute(source_filepath: Path = None):
                 )
             except (RuntimeError, ReferenceError, OSError) as err:
                 print(err)
-    else:
-        bpy.ops.file.make_paths_absolute()
+
+    bpy.ops.file.make_paths_absolute()
 
     return {
         datablock
