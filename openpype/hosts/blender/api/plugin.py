@@ -1177,7 +1177,7 @@ class AssetLoader(Loader):
 
         # Old datablocks remap
         for old_datablock in old_datablocks:
-            # Find matching new datablock by name
+            # Match new datablock by name
             if new_datablock := next(
                 iter(
                     sorted(
