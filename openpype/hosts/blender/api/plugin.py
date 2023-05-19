@@ -1110,7 +1110,7 @@ class AssetLoader(Loader):
         )
 
         # Clear and purge useless datablocks
-        # orphans_purge()
+        orphans_purge()
 
         return container, datablocks
 
@@ -1338,7 +1338,7 @@ class AssetLoader(Loader):
         )
 
         # Clear and purge useless datablocks
-        # orphans_purge()
+        orphans_purge()
 
         return container, datablocks
 
