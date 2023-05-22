@@ -16,6 +16,7 @@ from openpype.client.entities import (
     get_version_by_id,
 )
 from openpype.hosts.blender.api.properties import OpenpypeContainer
+from openpype.hosts.blender.api.lib import update_scene_containers
 from openpype.lib.local_settings import get_local_site_id
 from openpype.modules import ModulesManager
 from openpype.pipeline import (
@@ -424,7 +425,7 @@ def build_layout(project_name, asset_name):
         )
     except RuntimeError as err:
         errors.append(f"Load casting failed ! {err}")
-    
+
     # Wait for download
     wait_for_download(project_name, [board_repre, audio_repre])
 
@@ -579,25 +580,22 @@ def build_anim(project_name, asset_name):
         project_name, layout_repre, "LinkLayoutLoader"
     )
 
-    # keep layout root collection name before make container publishable.
-    layout_collection_name = next(
-        (
-            root.name
-            for root in layout_container.get_root_datablocks(
-                bpy.types.Collection
-            )
-        ),
-        None,
-    )
     # Make container publishable, expose its content
     bpy.ops.scene.make_container_publishable(
         container_name=layout_container.name
     )
 
-    # Switch hero containers to versioned
+    update_scene_containers()
+
+    # Switch hero containers to versioned and linked setdress to appended
     errors = []
     for container in bpy.context.scene.openpype_containers:
         container_metadata = container["avalon"]
+        family = container_metadata.get("family")
+
+        if family not in {"rig", "model", "setdress"}:
+            continue
+
         # Get version representation
         current_version = get_version_by_id(
             project_name,
@@ -621,32 +619,51 @@ def build_anim(project_name, asset_name):
             if not current_version:
                 continue
 
-        # Skip if current version representation is not hero
-        if current_version["type"] != "hero_version":
+        version_id = current_version["_id"] if family == "setdress" else None
+
+        # if current version representation is hero get last version
+        if current_version["type"] == "hero_version":
+            last_version = get_last_version_by_subset_id(
+                project_name, current_version["parent"], fields=["_id"]
+            )
+            if last_version:
+                version_id = last_version["_id"]
+
+        if not version_id:
             continue
 
-        # Get last version representation
-        last_version = get_last_version_by_subset_id(
-            project_name, current_version["parent"], fields=["_id"]
-        )
         version_representation = get_representation_by_name(
-            project_name, "blend", last_version["_id"]
+            project_name, "blend", version_id
         )
 
-        # Switch container to versioned
-        loader_name = container_metadata.get("loader")
+        # get loader
+        if family == "setdress":
+            loader_name = "AppendWoollySetdressLoader"
+        else:
+            loader_name = container_metadata.get("loader")
+
         if not loader_name or not isinstance(loader_name, str):
             continue
-        loader = get_loader(project_name, version_representation, loader_name)
 
-        if loader:
+        # Switch container to versioned
+        if (
+            current_version["_id"] != version_id
+            or container_metadata.get("loader") != loader_name
+            or family == "setdress"  # force reload to relink world datablock
+        ):
             try:
                 switch_container(
-                    container_metadata, version_representation, loader
+                    container_metadata,
+                    version_representation,
+                    get_loader(
+                        project_name,
+                        version_representation,
+                        loader_name,
+                    ),
                 )
-            except RuntimeError as err:
+            except (RuntimeError, AssertionError) as err:
                 errors.append(
-                    f"Switch versioned failed for {container.name}: {err}"
+                    f"Switch failed for {container.name}: {err}"
                 )
                 continue
 
@@ -661,9 +678,12 @@ def build_anim(project_name, asset_name):
     create_gdeformer_collection(bpy.context.scene.collection)
 
     # Load camera
-    cam_container, _cam_datablocks = load_subset(
-        project_name, camera_repre, "AppendCameraLoader"
-    )
+    try:
+        cam_container, _cam_datablocks = load_subset(
+            project_name, camera_repre, "AppendCameraLoader"
+        )
+    except (RuntimeError, AssertionError) as err:
+        errors.append(f"Load Camera failed: {err}")
 
     # Clean cam container from review collection
     # NOTE meant to be removed ASAP
@@ -710,9 +730,12 @@ def build_anim(project_name, asset_name):
             )
 
     # load the board mov as image background linked into the camera
-    load_subset(project_name, board_repre, "Background")
+    try:
+        load_subset(project_name, board_repre, "Background")
+    except (RuntimeError, AssertionError) as err:
+        errors.append(f"Load Background failed: {err}")
 
-    assert not errors, "; ".join(errors)
+    assert not errors, ";\n\n".join(errors)
 
 
 def build_lipsync(project_name: str, shot_name: str):
