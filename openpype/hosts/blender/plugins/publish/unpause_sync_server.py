@@ -1,4 +1,6 @@
-from time import sleep
+from concurrent.futures import as_completed
+import subprocess
+
 import pyblish
 
 from openpype.modules.base import ModulesManager
@@ -19,7 +21,10 @@ class UnpauseSyncServer(pyblish.api.ContextPlugin):
 
         # Wait for all started futures to finish
         for instance in context:
-            for future in instance.data.get("representations_futures", []):
-                while future.running():
-                    self.log.debug(f"Waiting for {future} to finish...")
-                    sleep(1)
+            for future in as_completed(
+                instance.data.get("representations_futures", [])
+            ):
+                try:
+                    self.log.info(future.result())
+                except subprocess.CalledProcessError as e:
+                    raise RuntimeError(e.stderr.decode("utf-8"))

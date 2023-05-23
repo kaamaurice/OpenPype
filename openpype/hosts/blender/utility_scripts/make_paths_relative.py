@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from itertools import chain
+import sys
 import bpy
 
 from openpype.lib.log import Logger
@@ -23,8 +24,8 @@ if __name__ == "__main__":
                     str(Path(datablock.filepath).resolve()),
                     start=str(Path(bpy.data.filepath).parent.resolve()),
                 )
-        except (RuntimeError, ReferenceError, ValueError, OSError) as e:
-            log.error(e)
+        except BaseException as e:
+            raise SystemExit(e)
 
     bpy.ops.file.make_paths_relative()
     bpy.ops.wm.save_mainfile()
