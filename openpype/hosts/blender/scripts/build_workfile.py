@@ -7,6 +7,7 @@ from openpype.client import (
     get_asset_by_name,
     get_subset_by_name,
     get_last_version_by_subset_id,
+    get_hero_version_by_subset_id,
     get_representations,
 )
 from openpype.client.entity_links import get_linked_representation_id
@@ -49,7 +50,7 @@ def get_loader(project_name: str, representation: dict, loader_type: str):
 
 
 def download_subset(
-    project_name, asset_name, subset_name, ext="blend"
+    project_name, asset_name, subset_name, ext="blend", hero=False
 ) -> dict:
     """Download the representation of the subset last version on current site.
 
@@ -58,6 +59,7 @@ def download_subset(
         asset_name (str): The asset name.
         subset_name (str): The subset name.
         ext (str, optional): The representation extension. Defaults to "blend".
+        hero (bool, optional): Use hero version.
 
     Returns:
         dict: The subset representation.
@@ -75,18 +77,26 @@ def download_subset(
     if not subset:
         return
 
-    last_version = get_last_version_by_subset_id(
-        project_name,
-        subset["_id"],
-        fields=["_id"],
-    )
-    if not last_version:
+    version = None
+    if hero:
+        version = get_hero_version_by_subset_id(
+            project_name,
+            subset["_id"],
+            fields=["_id"],
+        )
+    if not version:
+        version = get_last_version_by_subset_id(
+            project_name,
+            subset["_id"],
+            fields=["_id"],
+        )
+    if not version:
         return
 
     representation = next(
         get_representations(
             project_name,
-            version_ids=[last_version["_id"]],
+            version_ids=[version["_id"]],
             context_filters={"ext": [ext]},
         ),
         None,
@@ -258,7 +268,7 @@ def download_kitsu_casting(
 
             # Download subset
             representation = download_subset(
-                project_name, actor["asset_name"], subset_name
+                project_name, actor["asset_name"], subset_name, hero=True
             )
             if (
                 not representation
@@ -551,7 +561,7 @@ def build_layout(project_name, asset_name):
             "Background",
         )
 
-    assert not errors, "; ".join(errors)
+    assert not errors, ";\n\n".join(errors)
 
 
 def build_anim(project_name, asset_name):
@@ -577,7 +587,7 @@ def build_anim(project_name, asset_name):
 
     # Load layout subset
     layout_container, _layout_datablocks = load_subset(
-        project_name, layout_repre, "LinkLayoutLoader"
+        project_name, layout_repre, "AppendLayoutLoader"
     )
 
     # Make container publishable, expose its content
@@ -598,7 +608,7 @@ def build_anim(project_name, asset_name):
             continue
 
         # hold SetDress container
-        is_setdress = (family == "setdress")
+        is_setdress = family == "setdress"
         if is_setdress and not setdress_container:
             setdress_container = container
 
@@ -644,7 +654,7 @@ def build_anim(project_name, asset_name):
 
         # get loader
         if is_setdress:
-            loader_name = "AppendWoollySetdressLoader"
+            loader_name = "LinkWoollySetdressLoader"
         else:
             loader_name = container_metadata.get("loader")
 
@@ -686,8 +696,11 @@ def build_anim(project_name, asset_name):
     # Get world from setdress
     setdress_world = None
     if setdress_container:
-        for world in setdress_container.get_datablocks(bpy.types.World):
-            setdress_world = world 
+        for world in setdress_container.get_datablocks(
+            bpy.types.World,
+            only_local=False,
+        ):
+            setdress_world = world
 
     # Assign setdress or last loaded world
     if setdress_world:
