@@ -785,80 +785,8 @@ def build_anim(project_name, asset_name):
             datablock_name=objects[0].name,
             use_selection=False,
         )
-        animation_instance = (bpy.context.scene.openpype_instances[-1])
+        animation_instance = bpy.context.scene.openpype_instances[-1]
         add_datablocks_to_container(objects[1:], animation_instance)
-
-
-    animated_objects = set()
-    for obj in bpy.context.scene.objects:
-        if obj.type == "ARMATURE":
-            # Create animation instance for rig.
-            variant_name = (
-                obj.name[4].upper() + obj.name[5:]
-                if obj.name.find("RIG_") == 0
-                else obj.name[0].upper() + obj.name[1:]
-            )
-            bpy.ops.scene.create_openpype_instance(
-                creator_name="CreateAnimation",
-                asset_name=asset_name,
-                subset_name=f"animation{variant_name}",
-                datapath="objects",
-                datablock_name=obj.name,
-                use_selection=False,
-            )
-        elif obj.animation_data and obj.animation_data.action:
-            animated_objects.add(obj)
-
-    if animated_objects:
-        # Searching animated object from container.
-        for container in bpy.context.scene.openpype_containers:
-            # Get all objects from container.
-            container_objects = set()
-            for d_ref in container.datablock_refs:
-                if isinstance(d_ref.datablock, bpy.types.Collection):
-                    container_objects.update(d_ref.datablock.all_objects)
-                elif isinstance(d_ref.datablock, bpy.types.Object):
-                    container_objects.add(d_ref.datablock)
-            if not container_objects:
-                continue
-            # Get animation variant name using container short name.
-            trim_idx = container.name.find("_setdress")
-            variant_name = container.name[0].upper() + (
-                container.name[1:trim_idx]
-                if trim_idx > 0
-                else container.name[1:]
-            )
-            # Create animation instance for animated object from container.
-            container_animation_instance = None
-            for obj in container_objects & animated_objects:
-                if container_animation_instance is None:
-                    bpy.ops.scene.create_openpype_instance(
-                        creator_name="CreateAnimation",
-                        asset_name=asset_name,
-                        subset_name=f"animation{variant_name}",
-                        datapath="objects",
-                        datablock_name=obj.name,
-                        use_selection=False,
-                    )
-                    container_animation_instance = (
-                        bpy.context.scene.openpype_instances[-1]
-                    )
-                else:
-                    add_datablocks_to_container(
-                        obj, container_animation_instance
-                    )
-            animated_objects -= container_objects
-        # Create animation instance for remaining animated object.
-        for obj in animated_objects:
-            variant_name = obj.name[0].upper() + obj.name[1:]
-            bpy.ops.scene.create_openpype_instance(
-                creator_name="CreateAnimation",
-                asset_name=asset_name,
-                subset_name=f"animation{variant_name}",
-                datapath="objects",
-                datablock_name=obj.name,
-                use_selection=False,
-            )
 
     # load the board mov as image background linked into the camera
     try:
