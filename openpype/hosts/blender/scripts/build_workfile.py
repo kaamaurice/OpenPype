@@ -752,13 +752,16 @@ def build_anim(project_name, asset_name):
 
     instances_to_create = {}
     for container in bpy.context.scene.openpype_containers:
-        variant_name = container.get("avalon", {}).get("asset_name")
+        container_metadata = container["avalon"]
+        variant_name = container_metadata.get("asset_name")
+        family = container_metadata.get("family")
         container_datablocks = container.get_datablocks(bpy.types.Object)
 
-        if container is setdress_container:
-            instances_to_create[variant_name] = [
+        if family == "setdress":
+            print("setdress_container", container)
+            instances_to_create[variant_name] = list(
                 container.get_root_outliner_datablocks()
-            ]
+            )
         else:
             # Get rigs
             armature_objects = [
@@ -777,16 +780,23 @@ def build_anim(project_name, asset_name):
 
     # Create instances and add datablocks
     for variant_name, objects in instances_to_create.items():
+        first_datablock = objects.pop(0)
+        datablock_type = (
+            "collections"
+            if isinstance(first_datablock, bpy.types.Collection)
+            else "objects"
+        )
         bpy.ops.scene.create_openpype_instance(
             creator_name="CreateAnimation",
             asset_name=asset_name,
             subset_name=f"animation{variant_name}",
-            datapath="objects",
-            datablock_name=objects[0].name,
+            datapath=datablock_type,
+            datablock_name=first_datablock.name,
             use_selection=False,
         )
-        animation_instance = bpy.context.scene.openpype_instances[-1]
-        add_datablocks_to_container(objects[1:], animation_instance)
+        if objects:
+            animation_instance = bpy.context.scene.openpype_instances[-1]
+            add_datablocks_to_container(objects, animation_instance)
 
     # load the board mov as image background linked into the camera
     try:
