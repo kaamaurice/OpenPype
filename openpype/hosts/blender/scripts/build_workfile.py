@@ -17,8 +17,10 @@ from openpype.client.entities import (
     get_version_by_id,
 )
 from openpype.hosts.blender.api.properties import OpenpypeContainer
-from openpype.hosts.blender.api.lib import add_datablocks_to_container
-from openpype.hosts.blender.api.lib import update_scene_containers
+from openpype.hosts.blender.api.lib import (
+    add_datablocks_to_container,
+    update_scene_containers,
+)
 from openpype.lib.local_settings import get_local_site_id
 from openpype.modules import ModulesManager
 from openpype.pipeline import (
@@ -747,6 +749,45 @@ def build_anim(project_name, asset_name):
                 datablock_name=camera_collection.name,
                 use_selection=False,
             )
+
+    instances_to_create = {}
+    for container in bpy.context.scene.openpype_containers:
+        variant_name = container.get("avalon", {}).get("asset_name")
+        container_datablocks = container.get_datablocks(bpy.types.Object)
+
+        if container is setdress_container:
+            instances_to_create[variant_name] = [
+                container.get_root_outliner_datablocks()
+            ]
+        else:
+            # Get rigs
+            armature_objects = [
+                o for o in container_datablocks if o.type == "ARMATURE"
+            ]
+            # Get animated objects
+            animated_objects = [
+                o for o in container_datablocks
+                if o.animation_data and o.animation_data.action
+            ]
+
+            if armature_objects or animated_objects:
+                instances_to_create[variant_name] = (
+                    armature_objects + animated_objects
+                )
+
+    # Create instances and add datablocks
+    for variant_name, objects in instances_to_create.items():
+        bpy.ops.scene.create_openpype_instance(
+            creator_name="CreateAnimation",
+            asset_name=asset_name,
+            subset_name=f"animation{variant_name}",
+            datapath="objects",
+            datablock_name=objects[0].name,
+            use_selection=False,
+        )
+        animation_instance = (bpy.context.scene.openpype_instances[-1])
+        add_datablocks_to_container(objects[1:], animation_instance)
+
 
     animated_objects = set()
     for obj in bpy.context.scene.objects:
