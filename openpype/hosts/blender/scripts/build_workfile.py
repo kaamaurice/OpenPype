@@ -21,6 +21,7 @@ from openpype.hosts.blender.api.lib import (
     add_datablocks_to_container,
     update_scene_containers,
 )
+from openpype.hosts.blender.api.utils import BL_TYPE_DATAPATH
 from openpype.lib.local_settings import get_local_site_id
 from openpype.modules import ModulesManager
 from openpype.pipeline import (
@@ -758,6 +759,7 @@ def build_anim(project_name, asset_name):
         container_datablocks = container.get_datablocks(bpy.types.Object)
 
         if family == "setdress":
+            # For setdress container we gather only the root collection.
             instances_to_create[variant_name] = list(
                 container.get_root_outliner_datablocks()
             )
@@ -771,7 +773,7 @@ def build_anim(project_name, asset_name):
                 o for o in container_datablocks
                 if o.animation_data and o.animation_data.action
             ]
-
+            # Add new instance creation container had rigs or animated members.
             if armature_objects or animated_objects:
                 instances_to_create[variant_name] = (
                     armature_objects + animated_objects
@@ -779,30 +781,27 @@ def build_anim(project_name, asset_name):
 
     # Create instances and add datablocks
     for variant_name, objects in instances_to_create.items():
-        first_datablock = objects.pop(0)
-        datablock_type = (
-            "collections"
-            if isinstance(first_datablock, bpy.types.Collection)
-            else "objects"
-        )
         bpy.ops.scene.create_openpype_instance(
             creator_name="CreateAnimation",
             asset_name=asset_name,
             subset_name=f"animation{variant_name}",
-            datapath=datablock_type,
-            datablock_name=first_datablock.name,
+            datapath=BL_TYPE_DATAPATH.get(type(objects[0])),
+            datablock_nam=objects[0].name,
             use_selection=False,
         )
         animation_instance = bpy.context.scene.openpype_instances[-1]
-        if objects:
-            add_datablocks_to_container(objects, animation_instance)
-        if datablock_type == "collections":
-            publish_enabled = False
-            for o in first_datablock.all_objects:
-                if o.animation_data and o.animation_data.action:
+        add_datablocks_to_container(objects[1:], animation_instance)
+
+        # Enabled instance for publishing only if member objects are animated.
+        publish_enabled = False
+        for obj in objects:
+            if isinstance(obj, bpy.types.Object):
+                if obj.animation_data and obj.animation_data.action:
                     publish_enabled = True
                     break
-            animation_instance.publish = publish_enabled
+            elif isinstance(obj, bpy.types.Collection):
+                objects.extend(obj.all_objects)
+        animation_instance.publish = publish_enabled
 
     # load the board mov as image background linked into the camera
     try:
