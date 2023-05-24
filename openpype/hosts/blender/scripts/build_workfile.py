@@ -792,7 +792,7 @@ def build_anim(project_name, asset_name):
         animation_instance = bpy.context.scene.openpype_instances[-1]
         add_datablocks_to_container(objects[1:], animation_instance)
 
-        # Enabled instance for publishing only if member objects are animated.
+        # Enabled instance for publishing if any member objects are animated.
         publish_enabled = False
         for obj in objects:
             if (
