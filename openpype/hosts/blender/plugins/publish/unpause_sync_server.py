@@ -1,7 +1,9 @@
 from concurrent.futures import as_completed
+import re
 import subprocess
 
 import pyblish
+from openpype.hosts.blender.api.utils import ERROR_MAGIC
 
 from openpype.modules.base import ModulesManager
 from openpype.modules.timers_manager.plugins.publish.start_timer import (
@@ -25,6 +27,18 @@ class UnpauseSyncServer(pyblish.api.ContextPlugin):
                 instance.data.get("representations_futures", [])
             ):
                 try:
-                    self.log.info(future.result())
+                    result = future.result().decode()
+                    print("tata", re.findall(f'{ERROR_MAGIC}.*{ERROR_MAGIC}', result, re.MULTILINE), result)
+
+                    if errors_stack := re.findall(f'{ERROR_MAGIC}.*{ERROR_MAGIC}', result, re.MULTILINE):
+                        print("patatae", errors_stack.groups())
+                        for stack in errors_stack:
+                            print(stack)
+                            errors = eval(stack)
+                            for e in errors:
+                                self.log.error(e)
+                    else:
+                        self.log.info(result)
+
                 except subprocess.CalledProcessError as e:
                     raise RuntimeError(e.stderr.decode("utf-8"))
