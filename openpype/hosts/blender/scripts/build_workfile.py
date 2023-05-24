@@ -795,10 +795,13 @@ def build_anim(project_name, asset_name):
         # Enabled instance for publishing only if member objects are animated.
         publish_enabled = False
         for obj in objects:
-            if isinstance(obj, bpy.types.Object):
-                if obj.animation_data and obj.animation_data.action:
-                    publish_enabled = True
-                    break
+            if (
+                isinstance(obj, bpy.types.Object)
+                and obj.animation_data
+                and obj.animation_data.action
+            ):
+                publish_enabled = True
+                break
             elif isinstance(obj, bpy.types.Collection):
                 objects.extend(obj.all_objects)
         animation_instance.publish = publish_enabled
