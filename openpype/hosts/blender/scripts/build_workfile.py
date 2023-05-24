@@ -758,7 +758,6 @@ def build_anim(project_name, asset_name):
         container_datablocks = container.get_datablocks(bpy.types.Object)
 
         if family == "setdress":
-            print("setdress_container", container)
             instances_to_create[variant_name] = list(
                 container.get_root_outliner_datablocks()
             )
@@ -794,9 +793,16 @@ def build_anim(project_name, asset_name):
             datablock_name=first_datablock.name,
             use_selection=False,
         )
+        animation_instance = bpy.context.scene.openpype_instances[-1]
         if objects:
-            animation_instance = bpy.context.scene.openpype_instances[-1]
             add_datablocks_to_container(objects, animation_instance)
+        if datablock_type == "collections":
+            publish_enabled = False
+            for o in first_datablock.all_objects:
+                if o.animation_data and o.animation_data.action:
+                    publish_enabled = True
+                    break
+            animation_instance.publish = publish_enabled
 
     # load the board mov as image background linked into the camera
     try:
