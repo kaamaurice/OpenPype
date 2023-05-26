@@ -1,16 +1,17 @@
 """Shared functionality for pipeline plugins for Blender."""
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import bpy
 
 from openpype.pipeline import (
     LegacyCreator,
     LoaderPlugin,
+    AVALON_CONTAINER_ID,
 )
 from openpype.pipeline.context_tools import get_current_task_name
-from .pipeline import AVALON_CONTAINERS
+from .pipeline import AVALON_PROPERTY
 from .ops import (
     MainThreadItem,
     execute_in_main_thread
@@ -23,7 +24,7 @@ from .lib import (
 VALID_EXTENSIONS = [".blend", ".json", ".abc", ".fbx"]
 
 
-def asset_name(
+def get_asset_name(
     asset: str, subset: str, namespace: Optional[str] = None
 ) -> str:
     """Return a consistent name for an asset."""
@@ -38,12 +39,7 @@ def get_unique_number(
     asset: str, subset: str
 ) -> str:
     """Return a unique number based on the asset name."""
-    avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
-    if not avalon_container:
-        return "01"
-    asset_groups = avalon_container.all_objects
-
-    container_names = [c.name for c in asset_groups if c.type == 'EMPTY']
+    container_names = [c.name for c in bpy.data.collections]
     count = 1
     name = f"{asset}_{count:0>2}_{subset}"
     while name in container_names:
@@ -169,134 +165,27 @@ class Loader(LoaderPlugin):
 
     hosts = ["blender"]
 
-
-class AssetLoader(LoaderPlugin):
-    """A basic AssetLoader for Blender
-
-    This will implement the basic logic for linking/appending assets
-    into another Blender scene.
-
-    The `update` method should be implemented by a sub-class, because
-    it's different for different types (e.g. model, rig, animation,
-    etc.).
-    """
-
-    @staticmethod
-    def _get_instance_empty(instance_name: str, nodes: List) -> Optional[bpy.types.Object]:
-        """Get the 'instance empty' that holds the collection instance."""
-        for node in nodes:
-            if not isinstance(node, bpy.types.Object):
-                continue
-            if (node.type == 'EMPTY' and node.instance_type == 'COLLECTION'
-                    and node.instance_collection and node.name == instance_name):
-                return node
-        return None
-
-    @staticmethod
-    def _get_instance_collection(instance_name: str, nodes: List) -> Optional[bpy.types.Collection]:
-        """Get the 'instance collection' (container) for this asset."""
-        for node in nodes:
-            if not isinstance(node, bpy.types.Collection):
-                continue
-            if node.name == instance_name:
-                return node
-        return None
-
-    @staticmethod
-    def _get_library_from_container(container: bpy.types.Collection) -> bpy.types.Library:
-        """Find the library file from the container.
-
-        It traverses the objects from this collection, checks if there is only
-        1 library from which the objects come from and returns the library.
-
-        Warning:
-            No nested collections are supported at the moment!
-        """
-        assert not container.children, "Nested collections are not supported."
-        assert container.objects, "The collection doesn't contain any objects."
-        libraries = set()
-        for obj in container.objects:
-            assert obj.library, f"'{obj.name}' is not linked."
-            libraries.add(obj.library)
-
-        assert len(
-            libraries) == 1, "'{container.name}' contains objects from more then 1 library."
-
-        return list(libraries)[0]
-
-    def process_asset(self,
-                      context: dict,
-                      name: str,
-                      namespace: Optional[str] = None,
-                      options: Optional[Dict] = None):
+    def exec_load(
+        self,
+        context: dict,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        options: Optional[Dict] = None,
+    ):
         """Must be implemented by a sub-class"""
         raise NotImplementedError("Must be implemented by a sub-class")
 
-    def load(self,
-             context: dict,
-             name: Optional[str] = None,
-             namespace: Optional[str] = None,
-             options: Optional[Dict] = None) -> Optional[bpy.types.Collection]:
+    def load(
+        self,
+        context: dict,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        options: Optional[Dict] = None,
+    ):
         """ Run the loader on Blender main thread"""
-        mti = MainThreadItem(self._load, context, name, namespace, options)
+        mti = MainThreadItem(self.exec_load, context, name, namespace, options)
         execute_in_main_thread(mti)
-
-    def _load(self,
-              context: dict,
-              name: Optional[str] = None,
-              namespace: Optional[str] = None,
-              options: Optional[Dict] = None
-    ) -> Optional[bpy.types.Collection]:
-        """Load asset via database
-
-        Arguments:
-            context: Full parenthood of representation to load
-            name: Use pre-defined name
-            namespace: Use pre-defined namespace
-            options: Additional settings dictionary
-        """
-        # TODO (jasper): make it possible to add the asset several times by
-        # just re-using the collection
-        assert Path(self.fname).exists(), f"{self.fname} doesn't exist."
-
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
-        unique_number = get_unique_number(
-            asset, subset
-        )
-        namespace = namespace or f"{asset}_{unique_number}"
-        name = name or asset_name(
-            asset, subset, unique_number
-        )
-
-        nodes = self.process_asset(
-            context=context,
-            name=name,
-            namespace=namespace,
-            options=options,
-        )
-
-        # Only containerise if anything was loaded by the Loader.
-        if not nodes:
-            return None
-
-        # Only containerise if it's not already a collection from a .blend file.
-        # representation = context["representation"]["name"]
-        # if representation != "blend":
-        #     from openpype.hosts.blender.api.pipeline import containerise
-        #     return containerise(
-        #         name=name,
-        #         namespace=namespace,
-        #         nodes=nodes,
-        #         context=context,
-        #         loader=self.__class__.__name__,
-        #     )
-
-        # asset = context["asset"]["name"]
-        # subset = context["subset"]["name"]
-        # instance_name = asset_name(asset, subset, unique_number) + '_CON'
-
-        # return self._get_instance_collection(instance_name, nodes)
+        return mti
 
     def exec_update(self, container: Dict, representation: Dict):
         """Must be implemented by a sub-class"""
@@ -306,6 +195,7 @@ class AssetLoader(LoaderPlugin):
         """ Run the update on Blender main thread"""
         mti = MainThreadItem(self.exec_update, container, representation)
         execute_in_main_thread(mti)
+        return mti
 
     def exec_remove(self, container: Dict) -> bool:
         """Must be implemented by a sub-class"""
@@ -315,3 +205,110 @@ class AssetLoader(LoaderPlugin):
         """ Run the remove on Blender main thread"""
         mti = MainThreadItem(self.exec_remove, container)
         execute_in_main_thread(mti)
+        return mti
+
+
+class AssetLoader(LoaderPlugin):
+    """A basic AssetLoader for Blender
+
+    This will implement the basic logic for linking/appending assets
+    as collection into another Blender scene.
+
+    The abstract methods should be implemented by a sub-class, because
+    it's different for different types (e.g. model, rig, animation,
+    etc.).
+    """
+
+    def load_asset(self,
+                      context: dict,
+                      name: str,
+                      namespace: Optional[str] = None,
+                      options: Optional[Dict] = None):
+        """Must be implemented by a sub-class"""
+        raise NotImplementedError("Must be implemented by a sub-class")
+
+    def exec_load(
+        self,
+        context: dict,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        options: Optional[Dict] = None,
+    ) -> Optional[bpy.types.Collection]:
+        """Load asset via database.
+
+        Arguments:
+            context: Full parenthood of representation to load
+            name: Use pre-defined name
+            namespace: Use pre-defined namespace
+            options: Additional settings dictionary
+
+        Returns:
+            (bpy.types.Collection): The root collection.
+        """
+        assert Path(self.fname).exists(), f"{self.fname} doesn't exist."
+
+        libpath = self.fname
+        asset = context["asset"]["name"]
+        subset = context["subset"]["name"]
+        unique_number = get_unique_number(asset, subset)
+        namespace = namespace or f"{asset}_{unique_number}"
+        asset_group_name = get_asset_name(asset, subset, unique_number)
+        name = name or asset_group_name
+
+        asset_members = self.load_asset(
+            context=context,
+            name=name,
+            namespace=namespace,
+            options=options,
+        )
+
+        if not asset_members:
+            return None
+
+        asset_group = bpy.data.collections.new(name=asset_group_name)
+        asset_group.color_tag = "COLOR_05"
+        bpy.context.scene.collection.children.link(asset_group)
+
+        for member in asset_members:
+            if isinstance(member, bpy.types.Object):
+                asset_group.objects.link(member)
+            elif isinstance(member, bpy.types.Collection):
+                asset_group.children.link(member)
+
+        asset_group["members"] = asset_members
+
+        asset_group[AVALON_PROPERTY] = {
+            "schema": "openpype:container-2.0",
+            "id": AVALON_CONTAINER_ID,
+            "name": name,
+            "namespace": namespace or '',
+            "loader": str(self.__class__.__name__),
+            "representation": str(context["representation"]["_id"]),
+            "libpath": libpath,
+            "asset_name": asset,
+            "parent": str(context["representation"]["parent"]),
+            "family": context["representation"]["context"]["family"],
+            "objectName": asset_group_name
+        }
+
+        self[:] = asset_members
+        return asset_group
+
+    def exec_remove(self, container: Dict) -> bool:
+        """Remove an existing container from a Blender scene.
+
+        Arguments:
+            container (dict): Container to remove.
+
+        Returns:
+            (bool): Whether the container was deleted.
+        """
+        asset_group = self._get_asset_group_container(container)
+
+        if not asset_group:
+            return False
+
+        remove_container(asset_group)
+        orphans_purge()
+
+        return True
