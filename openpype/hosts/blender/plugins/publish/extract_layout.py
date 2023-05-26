@@ -125,13 +125,14 @@ class ExtractLayout(publish.Extractor):
         json_data = []
         fbx_files = []
 
-        asset_group = bpy.data.objects[str(instance)]
-
         fbx_count = 0
 
         project_name = instance.context.data["projectEntity"]["name"]
-        for asset in asset_group.children:
+        for asset in instance:
             metadata = asset.get(AVALON_PROPERTY)
+
+            if not metadata:
+                continue
 
             version_id = metadata["parent"]
             family = metadata["family"]

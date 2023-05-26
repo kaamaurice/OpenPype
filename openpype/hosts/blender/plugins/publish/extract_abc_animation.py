@@ -28,24 +28,15 @@ class ExtractAnimationABC(publish.Extractor):
         plugin.deselect_all()
 
         selected = []
-        asset_group = None
 
-        objects = []
         for obj in instance:
-            if isinstance(obj, bpy.types.Collection):
-                for child in obj.all_objects:
-                    objects.append(child)
-        for obj in objects:
-            children = [o for o in bpy.data.objects if o.parent == obj]
-            for child in children:
-                objects.append(child)
-
-        for obj in objects:
+            if not isinstance(obj, bpy.types.Object):
+                continue
             obj.select_set(True)
             selected.append(obj)
 
         context = plugin.create_blender_context(
-            active=asset_group, selected=selected)
+            active=selected[0], selected=selected)
 
         # We export the abc
         bpy.ops.wm.alembic_export(
