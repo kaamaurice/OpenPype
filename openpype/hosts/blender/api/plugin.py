@@ -9,6 +9,7 @@ from openpype.pipeline import (
     LegacyCreator,
     LoaderPlugin,
 )
+from openpype.pipeline.context_tools import get_current_task_name
 from .pipeline import AVALON_CONTAINERS
 from .ops import (
     MainThreadItem,
@@ -138,14 +139,27 @@ class Creator(LegacyCreator):
     """Base class for Creator plug-ins."""
     defaults = ['Main']
 
+    def __init__(self, *args, **kwargs):
+        super(Creator, self).__init__(*args, **kwargs)
+        self.data["task"] = get_current_task_name()
+
     def process(self):
+        """ Run the creator on Blender main thread"""
+        mti = MainThreadItem(self._process)
+        execute_in_main_thread(mti)
+
+    def _process(self):
         collection = bpy.data.collections.new(name=self.data["subset"])
+        collection.color_tag = "COLOR_07"
         bpy.context.scene.collection.children.link(collection)
         imprint(collection, self.data)
 
         if (self.options or {}).get("useSelection"):
             for obj in get_selection():
                 collection.objects.link(obj)
+        elif (self.options or {}).get("asset_group"):
+            obj = self.options.get("asset_group")
+            collection.objects.link(obj)
 
         return collection
 
