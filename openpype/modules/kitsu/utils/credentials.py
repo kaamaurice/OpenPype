@@ -5,7 +5,7 @@ from typing import Tuple
 import gazu
 
 from openpype.lib.local_settings import OpenPypeSecureRegistry
-from openpype.lib import emit_event
+from openpype.lib import emit_event, get_local_site_id
 
 
 def validate_credentials(
@@ -29,9 +29,17 @@ def validate_credentials(
 
     # Authenticate
     try:
-        gazu.log_in(login, password)
+        login_result = gazu.log_in(login, password)
     except gazu.exception.AuthFailedException:
         return False
+
+    # Update user local site id
+    user_id = login_result["user"]["id"]
+    user_data = login_result["user"]["data"]
+    if not isinstance(user_data, dict):
+        user_data = {}
+    user_data["openpype_local_site_id"] = get_local_site_id()
+    gazu.client.put(f"data/persons/{user_id}", user_data)
 
     emit_event("kitsu.user.logged", data={"username": login}, source="kitsu")
 
