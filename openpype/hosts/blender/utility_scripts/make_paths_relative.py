@@ -32,11 +32,14 @@ if __name__ == "__main__":
         except BaseException as e:
             errors.append(e)
     
-    bpy.ops.file.make_paths_relative()
+    try:
+        bpy.ops.file.make_paths_relative()
+    except BaseException as e:
+        errors.append(e)
+    
     bpy.ops.wm.save_mainfile()
     
     # Raise errors
-    if errors:
-        raise RuntimeError(
-            f"{ERROR_MAGIC}{errors}{ERROR_MAGIC}"
-        )
+    for e in errors:
+        # Print syntax same as raising an exception
+        print(f"{type(e).__name__}: {e}")

@@ -11,6 +11,7 @@ from openpype.hosts.blender.api.pipeline import (
     AVALON_PROPERTY,
     metadata_update,
 )
+from openpype.hosts.blender.api.utils import ERROR_MAGIC
 from openpype.pipeline import legacy_io
 from openpype.pipeline.constants import AVALON_CONTAINER_ID
 
@@ -105,3 +106,5 @@ if __name__ == "__main__":
                 datablock.color_tag = "COLOR_08"
 
     bpy.ops.wm.save_mainfile()
+
+    raise SystemError('errerar')
