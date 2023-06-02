@@ -11,6 +11,7 @@ from openpype.pipeline import (
     AVALON_CONTAINER_ID,
 )
 from openpype.hosts.blender.api import plugin
+from openpype.hosts.blender.api.utils import context_window
 from openpype.hosts.blender.api.pipeline import (
     AVALON_CONTAINERS,
     AVALON_PROPERTY,
@@ -102,6 +103,7 @@ class BlendModelLoader(plugin.AssetLoader):
 
         return objects
 
+    @context_window
     def process_asset(
         self, context: dict, name: str, namespace: Optional[str] = None,
         options: Optional[Dict] = None
@@ -186,6 +188,7 @@ class BlendModelLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
+    @context_window
     def update(self, container: Dict, representation: Dict):
         """Update the loaded asset.
 
@@ -261,6 +264,7 @@ class BlendModelLoader(plugin.AssetLoader):
         metadata["representation"] = str(representation["_id"])
         metadata["parent"] = str(representation["parent"])
 
+    @context_window
     def remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.
 

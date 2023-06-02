@@ -3,7 +3,8 @@
 import bpy
 
 from openpype.pipeline import legacy_io
-from openpype.hosts.blender.api import plugin, lib, ops
+from openpype.hosts.blender.api import plugin, lib
+from openpype.hosts.blender.api.utils import context_window
 from openpype.hosts.blender.api.pipeline import AVALON_INSTANCES
 
 
@@ -15,6 +16,7 @@ class CreateModel(plugin.Creator):
     family = "model"
     icon = "cube"
 
+    @context_window
     def process(self):
         # Get Instance Container or create it if it does not exist
         instances = bpy.data.collections.get(AVALON_INSTANCES)

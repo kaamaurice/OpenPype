@@ -5,6 +5,7 @@ import bpy
 from openpype.pipeline import legacy_io
 import openpype.hosts.blender.api.plugin
 from openpype.hosts.blender.api import lib
+from openpype.hosts.blender.api.utils import context_window
 
 
 class CreatePointcache(openpype.hosts.blender.api.plugin.Creator):
@@ -15,6 +16,7 @@ class CreatePointcache(openpype.hosts.blender.api.plugin.Creator):
     family = "pointcache"
     icon = "gears"
 
+    @context_window
     def process(self):
 
         asset = self.data["asset"]
