@@ -46,7 +46,7 @@ class BlenderApplication(QApplication):
             self.blender_widget = QWidget.createWindowContainer(
                 self._blender_window
             )
-            self.blender_widget.setWindowTitle("Blender Qt")
+            self.blender_widget.setWindowTitle("Blender OpenPype")
             self._set_window_geometry()
             self.focusObjectChanged.connect(self._on_focus_object_changed)
 
