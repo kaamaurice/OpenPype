@@ -6,7 +6,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Dict, List, Optional, Union
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets
 
 import bpy
 import bpy.utils.previews
@@ -16,11 +16,6 @@ from openpype.tools.utils import host_tools
 
 
 PREVIEW_COLLECTIONS: Dict = dict()
-
-# This seems like a good value to keep the Qt app responsive and doesn't slow
-# down Blender. At least on macOS I the interface of Blender gets very laggy if
-# you make it smaller.
-TIMER_INTERVAL: float = 0.01 if platform.system() == "Windows" else 0.1
 
 
 class GlobalClass:
@@ -73,7 +68,10 @@ class LaunchQtApp(bpy.types.Operator):
         else:
             window = GlobalClass.get_window(self.bl_idname)
             if window is None:
-                window = host_tools.get_tool_by_name(self._tool_name)
+                window = host_tools.get_tool_by_name(
+                    self._tool_name,
+                    parent=QtWidgets.QApplication.instance().blender_widget,
+                )
                 GlobalClass.store_window(self.bl_idname, window)
             self._window = window
 
@@ -98,9 +96,6 @@ class LaunchQtApp(bpy.types.Operator):
                 GlobalClass.store_window(self.bl_idname, window)
 
         else:
-            origin_flags = self._window.windowFlags()
-            on_top_flags = origin_flags | QtCore.Qt.WindowStaysOnTopHint
-            self._window.setWindowFlags(on_top_flags)
             self._window.show()
 
         return {'FINISHED'}
@@ -260,7 +255,6 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_editor_menus.append(draw_avalon_menu)
-
 
 def unregister():
     """Unregister the operators and menu."""
