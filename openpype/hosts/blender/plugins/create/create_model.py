@@ -16,11 +16,6 @@ class CreateModel(plugin.Creator):
     icon = "cube"
 
     def process(self):
-        """ Run the creator on Blender main thread"""
-        mti = ops.MainThreadItem(self._process)
-        ops.execute_in_main_thread(mti)
-
-    def _process(self):
         # Get Instance Container or create it if it does not exist
         instances = bpy.data.collections.get(AVALON_INSTANCES)
         if not instances:

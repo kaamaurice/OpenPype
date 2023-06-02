@@ -27,6 +27,7 @@ from openpype.lib import (
 )
 import openpype.hosts.blender
 from openpype.settings import get_project_settings
+from openpype.widgets.message_window import Window
 
 
 HOST_DIR = os.path.dirname(os.path.abspath(openpype.hosts.blender.__file__))
@@ -84,30 +85,8 @@ def uninstall():
     if not IS_HEADLESS:
         ops.unregister()
 
-
-def show_message(title, message):
-    from openpype.widgets.message_window import Window
-    from .ops import BlenderApplication
-
-    BlenderApplication.get_app()
-
-    Window(
-        parent=None,
-        title=title,
-        message=message,
-        level="warning")
-
-
 def message_window(title, message):
-    from .ops import (
-        MainThreadItem,
-        execute_in_main_thread,
-        _process_app_events
-    )
-
-    mti = MainThreadItem(show_message, title, message)
-    execute_in_main_thread(mti)
-    _process_app_events()
+    Window(parent=None, title=title, message=message, level="warning")
 
 
 def set_start_end_frames():

@@ -10,10 +10,6 @@ from openpype.pipeline import (
     LoaderPlugin,
 )
 from .pipeline import AVALON_CONTAINERS
-from .ops import (
-    MainThreadItem,
-    execute_in_main_thread
-)
 from .lib import (
     imprint,
     get_selection
@@ -219,15 +215,6 @@ class AssetLoader(LoaderPlugin):
         raise NotImplementedError("Must be implemented by a sub-class")
 
     def load(self,
-             context: dict,
-             name: Optional[str] = None,
-             namespace: Optional[str] = None,
-             options: Optional[Dict] = None) -> Optional[bpy.types.Collection]:
-        """ Run the loader on Blender main thread"""
-        mti = MainThreadItem(self._load, context, name, namespace, options)
-        execute_in_main_thread(mti)
-
-    def _load(self,
               context: dict,
               name: Optional[str] = None,
               namespace: Optional[str] = None,
@@ -284,20 +271,10 @@ class AssetLoader(LoaderPlugin):
 
         # return self._get_instance_collection(instance_name, nodes)
 
-    def exec_update(self, container: Dict, representation: Dict):
-        """Must be implemented by a sub-class"""
-        raise NotImplementedError("Must be implemented by a sub-class")
-
     def update(self, container: Dict, representation: Dict):
-        """ Run the update on Blender main thread"""
-        mti = MainThreadItem(self.exec_update, container, representation)
-        execute_in_main_thread(mti)
-
-    def exec_remove(self, container: Dict) -> bool:
         """Must be implemented by a sub-class"""
         raise NotImplementedError("Must be implemented by a sub-class")
 
     def remove(self, container: Dict) -> bool:
-        """ Run the remove on Blender main thread"""
-        mti = MainThreadItem(self.exec_remove, container)
-        execute_in_main_thread(mti)
+        """Must be implemented by a sub-class"""
+        raise NotImplementedError("Must be implemented by a sub-class")

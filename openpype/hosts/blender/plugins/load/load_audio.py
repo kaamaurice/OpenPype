@@ -93,7 +93,7 @@ class AudioLoader(plugin.AssetLoader):
         self[:] = objects
         return [objects]
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, representation: Dict):
         """Update an audio strip in the sequence editor.
 
         Arguments:
@@ -175,7 +175,7 @@ class AudioLoader(plugin.AssetLoader):
         metadata["parent"] = str(representation["parent"])
         metadata["audio"] = new_audio
 
-    def exec_remove(self, container: Dict) -> bool:
+    def remove(self, container: Dict) -> bool:
         """Remove an audio strip from the sequence editor and the container.
 
         Arguments:

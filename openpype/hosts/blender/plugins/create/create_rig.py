@@ -3,7 +3,7 @@
 import bpy
 
 from openpype.pipeline import legacy_io
-from openpype.hosts.blender.api import plugin, lib, ops
+from openpype.hosts.blender.api import plugin, lib
 from openpype.hosts.blender.api.pipeline import AVALON_INSTANCES
 
 
@@ -15,12 +15,8 @@ class CreateRig(plugin.Creator):
     family = "rig"
     icon = "wheelchair"
 
-    def process(self):
-        """ Run the creator on Blender main thread"""
-        mti = ops.MainThreadItem(self._process)
-        ops.execute_in_main_thread(mti)
 
-    def _process(self):
+    def process(self):
         # Get Instance Container or create it if it does not exist
         instances = bpy.data.collections.get(AVALON_INSTANCES)
         if not instances:

@@ -149,7 +149,7 @@ class BlendCameraLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, representation: Dict):
         """Update the loaded asset.
 
         This will remove all children of the asset group, load the new ones
@@ -221,7 +221,7 @@ class BlendCameraLoader(plugin.AssetLoader):
         metadata["representation"] = str(representation["_id"])
         metadata["parent"] = str(representation["parent"])
 
-    def exec_remove(self, container: Dict) -> bool:
+    def remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.
 
         Arguments:

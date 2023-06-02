@@ -441,7 +441,7 @@ class BlendLayoutLoader(plugin.AssetLoader):
         metadata["libpath"] = str(libpath)
         metadata["representation"] = str(representation["_id"])
 
-    def exec_remove(self, container: Dict) -> bool:
+    def remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.
 
         Arguments:

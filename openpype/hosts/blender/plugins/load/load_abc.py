@@ -150,7 +150,7 @@ class CacheModelLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, representation: Dict):
         """Update the loaded asset.
 
         This will remove all objects of the current collection, load the new
@@ -213,7 +213,7 @@ class CacheModelLoader(plugin.AssetLoader):
         metadata["libpath"] = str(libpath)
         metadata["representation"] = str(representation["_id"])
 
-    def exec_remove(self, container: Dict) -> bool:
+    def remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.
 
         Arguments:
