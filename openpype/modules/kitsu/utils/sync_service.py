@@ -15,9 +15,17 @@ import threading
 
 import gazu
 
-from openpype.client import get_project, get_assets, get_asset_by_name
+from openpype.client import (
+    get_project,
+    get_assets,
+    get_asset_by_name,
+    get_subsets,
+    get_last_version_by_subset_id,
+    get_representations,
+)
 from openpype.pipeline import AvalonMongoDB
 from openpype.lib import Logger
+from openpype.modules.base import ModulesManager
 from .credentials import validate_credentials
 from .update_op_with_zou import (
     create_op_asset,
@@ -47,6 +55,8 @@ class Listener:
         """
         self.dbcon = AvalonMongoDB()
         self.dbcon.install()
+
+        self.sync_server = ModulesManager().modules_by_name.get("sync_server")
 
         gazu.client.set_host(os.environ["KITSU_SERVER"])
 
@@ -120,6 +130,11 @@ class Listener:
         gazu.events.add_listener(
             self.event_client, "task:delete", self._delete_task
         )
+
+        if self.sync_server and self.sync_server.enabled:
+            gazu.events.add_listener(
+                self.event_client, "task:assign", self._assign_task
+            )
 
     def start(self):
         """Start listening for events."""
@@ -617,6 +632,65 @@ class Listener:
                     log.info(msg)
 
                     return
+
+    def _assign_task(self, data):
+        print(data)
+        # Get project entity
+        set_op_project(self.dbcon, data["project_id"])
+        project_name = self.dbcon.active_project()
+
+        # Get gazu entity task
+        task = gazu.task.get_task(data["task_id"])
+
+        # Get assignee site id
+        assignee_site_ids = []
+        for assignee_id in task["assignees"]:
+            assignee_data = gazu.task.get_person(assignee_id)["data"]
+            if isinstance(assignee_data, dict) and assignee_data.get(""):
+                assignee_site_ids.append(assignee_data[""])
+
+        # Get task asset doc
+        if task["task_type"]["for_entity"] == "Asset":
+            asset_name = task["entity"]["name"]
+        elif task["task_type"]["for_entity"] == "Shot":
+            ep = self.get_ep_dict(task.get("episode_id"))
+            asset_name = "{ep_name}{sequence_name}_{shot_name}".format(
+                ep_name=ep["name"] + "_" if ep is not None else "",
+                sequence_name=task["sequence"]["name"],
+                shot_name=task["entity"]["name"],
+            )
+        asset_doc = get_asset_by_name(project_name, asset_name)
+
+        # Get all representations to sync from asset
+        representation_ids = set()
+        for subset_doc in get_subsets(
+            project_name,
+            asset_ids=[asset_doc["_id"]],
+        ):
+            last_version_doc = get_last_version_by_subset_id(
+                project_name, subset_doc["_id"]
+            )
+            for repre in get_representations(
+                project_name,
+                version_ids=[last_version_doc["_id"]],
+            ):
+                representation_ids.add(repre["_id"])
+
+        # Add assignee_site_id for all representations to sync
+        for repre_id in representation_ids:
+            for assignee_site_id in assignee_site_ids:
+                if not self.sync_server.is_representation_on_site(
+                    project_name,
+                    repre_id,
+                    assignee_site_id,
+                ):
+                    self.sync_server.add_site(
+                        project_name,
+                        repre_id,
+                        assignee_site_id,
+                        force=True,
+                        priority=40,
+                    )
 
 
 def start_listeners(login: str, password: str):
