@@ -10,6 +10,71 @@ from openpype.modules.timers_manager.plugins.publish.start_timer import (
     StartTimer,
 )
 
+BUILTIN_EXCEPTIONS={"BaseException",
+"GeneratorExit",
+"KeyboardInterrupt",
+"SystemExit",
+"Exception",
+"ArithmeticError",
+"FloatingPointError",
+"OverflowError",
+"ZeroDivisionError",
+"AssertionError",
+"AttributeError",
+"BufferError",
+"EOFError",
+"ImportError",
+"ModuleNotFoundError",
+"LookupError",
+"IndexError",
+"KeyError",
+"MemoryError",
+"NameError",
+"UnboundLocalError",
+"OSError",
+"BlockingIOError",
+"ChildProcessError",
+"ConnectionError",
+"BrokenPipeError",
+"ConnectionAbortedError",
+"ConnectionRefusedError",
+"ConnectionResetError",
+"FileExistsError",
+"FileNotFoundError",
+"InterruptedError",
+"IsADirectoryError",
+"NotADirectoryError",
+"PermissionError",
+"ProcessLookupError",
+"TimeoutError",
+"ReferenceError",
+"RuntimeError",
+"NotImplementedError",
+"RecursionError",
+"StopAsyncIteration",
+"StopIteration",
+"SyntaxError",
+"IndentationError",
+"TabError",
+"SystemError",
+"TypeError",
+"ValueError",
+"UnicodeError",
+"UnicodeDecodeError",
+"UnicodeEncodeError",
+"UnicodeTranslateError",
+"Warning",
+"BytesWarning",
+"DeprecationWarning",
+"EncodingWarning",
+"FutureWarning",
+"ImportWarning",
+"PendingDeprecationWarning",
+"ResourceWarning",
+"RuntimeWarning",
+"SyntaxWarning",
+"UnicodeWarning",
+"UserWarning"}
 
 def all_subclasses(cls):
     return set(cls.__subclasses__()).union(
@@ -26,34 +91,37 @@ class UnpauseSyncServer(pyblish.api.ContextPlugin):
         sync_server_module.unpause_server()
 
 
-        all_errors = all_subclasses(BaseException)
-        print("tqat", ("|".join(f"{e.__name__}: .*" for e in all_errors)))
-        match = re.compile("|".join(f"{e.__name__}: .*" for e in all_errors))
-
+        # all_errors = all_subclasses(BaseException)
+        print("tqat", ("|".join(f"{e}: .*" for e in BUILTIN_EXCEPTIONS)))
+        match = re.compile("|".join(f"{e}: .*" for e in BUILTIN_EXCEPTIONS))
+        
         # Wait for all started futures to finish
+        subprocess_errors = False
         for instance in context:
             for future in as_completed(
                 instance.data.get("representations_futures", [])
             ):
-                try:
-                    result = future.result().decode()
-                    print("toto", result)
+                
+                result = future.result().decode()
+                print(future.result())
+                print("toto", result)
 
-                    if errors_stack := re.finditer(match, result):
-                        # print("toto2", errors_stack)
-                        for stack in errors_stack:
-                            print("toto3", stack)
-                            if "Traceback" not in stack.group(1):
-                                continue
+                if errors_stack := re.finditer(match, result):
+                    # print("toto2", errors_stack)
+                    for stack in errors_stack:
+                        print("toto3", stack)
 
-                            error = stack.group(1).split(":")
-                            raise eval(error[0])(error[1].strip())
-                            # errors = eval(stack.group(1))
+                        error = stack.group(0).split(":")
+                        self.log.error(f"{error[0]}: {error[1].strip()}")
+                        # raise eval(error[0])(error[1].strip())
+                        # errors = eval(stack.group(1))
 
-                            # for e in errors:
-                            #     raise e
-                    else:
-                        self.log.info(result)
+                        # for e in errors:
+                        #     raise e
+                    subprocess_errors = True
+                else:
+                    self.log.info(result)
+        print("toto", subprocess_errors)
+        if subprocess_errors:
+            raise RuntimeError("Errors happened during subprocesses. See above.")
 
-                except subprocess.CalledProcessError as e:
-                    raise RuntimeError(e.stderr.decode("utf-8")) from e
