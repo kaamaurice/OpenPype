@@ -125,5 +125,5 @@ class UnpauseSyncServer(pyblish.api.ContextPlugin):
         # Stop if errors
         if subprocess_errors:
             raise RuntimeError(
-                "Errors happened during subprocesses. See above."
+                "Errors occured during subprocesses. See above."
             )
