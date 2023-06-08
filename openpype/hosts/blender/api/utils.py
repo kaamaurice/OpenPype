@@ -16,9 +16,6 @@ from openpype.pipeline.load.utils import loaders_from_representation
 # Key for metadata dict
 AVALON_PROPERTY = "avalon"
 
-# Magic for errors
-ERROR_MAGIC = "_!_"
-
 # Match Blender type to a datapath to look into. Needed for native UI creator.
 BL_TYPE_DATAPATH = (  # TODO rename DATACOL
     {  # NOTE Order is important for some hierarchy based processes!

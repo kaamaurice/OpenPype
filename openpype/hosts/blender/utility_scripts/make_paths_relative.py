@@ -3,8 +3,8 @@
 from pathlib import Path
 from itertools import chain
 import sys
+import traceback
 import bpy
-from openpype.hosts.blender.api.utils import ERROR_MAGIC
 
 from openpype.lib.log import Logger
 
@@ -26,20 +26,17 @@ if __name__ == "__main__":
                     str(Path(datablock.filepath).resolve()),
                     start=str(Path(bpy.data.filepath).parent.resolve()),
                 )
-                raise Exception("blabla")
-        # except (RuntimeError, ReferenceError, ValueError, OSError) as e:
-            
         except BaseException as e:
-            errors.append(e)
-    
+            errors.append(sys.exc_info())
+
     try:
         bpy.ops.file.make_paths_relative()
     except BaseException as e:
-        errors.append(e)
-    
+        errors.append(sys.exc_info())
+
     bpy.ops.wm.save_mainfile()
-    
+
     # Raise errors
     for e in errors:
         # Print syntax same as raising an exception
-        print(f"{type(e).__name__}: {e}")
+        traceback.print_exception(*e, file=sys.stdout)
