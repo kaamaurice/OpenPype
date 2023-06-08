@@ -118,7 +118,10 @@ class IntegrateBlenderAsset(pyblish.api.InstancePlugin):
 
                 # Submit command to pool
                 f = pool.submit(
-                    subprocess.check_output, main_command, shell=False, stderr=subprocess.PIPE
+                    subprocess.check_output,
+                    main_command,
+                    shell=False,
+                    stderr=subprocess.PIPE,
                 )
                 f.add_done_callback(partial(callback, repre_id))
 
