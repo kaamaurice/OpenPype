@@ -784,7 +784,8 @@ class AssetLoader(Loader):
                     d.override_library.is_system_override = False
 
                 # Set source_name
-                d["source_name"] = d.override_library.reference.name
+                if d.override_library:
+                    d["source_name"] = d.override_library.reference.name
 
                 # Override armature
                 if isinstance(d, bpy.types.Object) and d.type == "ARMATURE":
@@ -1268,6 +1269,7 @@ class AssetLoader(Loader):
                     and old_datablock.data
                     and old_datablock.data.shape_keys
                     and old_datablock.data.shape_keys.animation_data
+                    and old_datablock.data.shape_keys.animation_data.drivers
                 ):
                     for i, driver in enumerate(
                         new_datablock.data.shape_keys.animation_data.drivers
