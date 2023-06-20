@@ -649,32 +649,44 @@ class Listener:
             if isinstance(assignee_data, dict) and assignee_data.get(""):
                 assignee_site_ids.append(assignee_data[""])
 
-        # Get task asset doc
+        # Get task assets
+        assets = set()
         if task["task_type"]["for_entity"] == "Asset":
-            asset_name = task["entity"]["name"]
+            assets.add(task["entity"]["name"])
         elif task["task_type"]["for_entity"] == "Shot":
             ep = self.get_ep_dict(task.get("episode_id"))
-            asset_name = "{ep_name}{sequence_name}_{shot_name}".format(
+            shot_name = "{ep_name}{sequence_name}_{shot_name}".format(
                 ep_name=ep["name"] + "_" if ep is not None else "",
                 sequence_name=task["sequence"]["name"],
                 shot_name=task["entity"]["name"],
             )
-        asset_doc = get_asset_by_name(project_name, asset_name)
-
-        # Get all representations to sync from asset
-        representation_ids = set()
-        for subset_doc in get_subsets(
-            project_name,
-            asset_ids=[asset_doc["_id"]],
-        ):
-            last_version_doc = get_last_version_by_subset_id(
-                project_name, subset_doc["_id"]
+            assets.add(shot_name)
+            # Get casting
+            casting = gazu.casting.get_shot_casting(
+                gazu.shot.get_shot(task["entity"]["id"])
             )
-            for repre in get_representations(
+            for actor in casting:
+                assets.add(actor["asset_name"])
+
+        # Get all representations to sync from assets
+        representation_ids = set()
+        for asset_name in assets:
+            asset_doc = get_asset_by_name(project_name, asset_name)
+            if not asset_doc:
+                continue
+            for subset_doc in get_subsets(
                 project_name,
-                version_ids=[last_version_doc["_id"]],
+                asset_ids=[asset_doc["_id"]],
             ):
-                representation_ids.add(repre["_id"])
+                last_version_doc = get_last_version_by_subset_id(
+                    project_name, subset_doc["_id"]
+                )
+                for repre in get_representations(
+                    project_name,
+                    version_ids=[last_version_doc["_id"]],
+                ):
+                    # TODO : filters with project settings
+                    representation_ids.add(repre["_id"])
 
         # Add assignee_site_id for all representations to sync
         for repre_id in representation_ids:
