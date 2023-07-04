@@ -169,11 +169,20 @@ class BackgroundLoader(ImageLoader):
             bkg_img.image_user.frame_duration = (
                 bpy.context.scene.frame_end - bpy.context.scene.frame_start
             )
-            # Append audio in the sequencer if channel 1 is empty
+            # Append audio in the sequencer only if there is no sound yet
             sequences = bpy.context.scene.sequence_editor.sequences
-            if all({seq.channel != 1 for seq in sequences}):
+            if all({seq.type != "SOUND" for seq in sequences}):
+                # Find an empty channel
+                used_channels = {seq.channel for seq in sequences}
+                empty_channel = next(
+                    (c for c in range(1, 128) if c not in used_channels), 0
+                )
+                # Add audio in sequencer
                 sound_seq = sequences.new_sound(
-                    img.name, img.filepath, 1, bpy.context.scene.frame_start
+                    img.name,
+                    img.filepath,
+                    empty_channel,
+                    bpy.context.scene.frame_start,
                 )
                 # Add container metadata to sound
                 sound_seq.sound[AVALON_PROPERTY] = (
