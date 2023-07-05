@@ -171,11 +171,15 @@ class BackgroundLoader(ImageLoader):
             )
             # Append audio in the sequencer only if there is no sound yet
             sequences = bpy.context.scene.sequence_editor.sequences
-            if all({seq.type != "SOUND" for seq in sequences}):
+            if all(seq.type != "SOUND" for seq in sequences):
                 # Find an empty channel
-                used_channels = {seq.channel for seq in sequences}
                 empty_channel = next(
-                    (c for c in range(1, 128) if c not in used_channels), 0
+                    (
+                        c
+                        for c in range(1, 128)
+                        if c not in {seq.channel for seq in sequences}
+                    ),
+                    0,
                 )
                 # Add audio in sequencer
                 sound_seq = sequences.new_sound(
