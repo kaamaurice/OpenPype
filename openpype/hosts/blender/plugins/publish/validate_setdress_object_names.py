@@ -23,8 +23,9 @@ class ValidateSetdressObjectNames(pyblish.api.InstancePlugin):
     def get_invalid(instance) -> List:
         invalid = []
 
-        # Set of special characters except "_" which is used in naming
+        # Set of special characters except "_" and "." which is used in naming
         invalid_chars = set(string.punctuation.replace("_",""))
+        invalid_chars.remove(".")
         for obj in instance:
             # any is faster than regex to get char in obj.name and return bool
             if obj is not None and any(char in invalid_chars for char in obj.name):
