@@ -17,10 +17,13 @@ if __name__ == "__main__":
     errors = []
     # Resolve path from source filepath with the relative filepath
     for datablock in get_datablocks_with_filepath(relative=False):
-        # skip render result, compositing and generated images
+        # skip render result, compositing and generated images and texts.
         if (
-            isinstance(datablock, bpy.types.Image)
-            and datablock.source in {"GENERATED", "VIEWER"}
+            isinstance(datablock, bpy.types.Text)
+            or (
+                isinstance(datablock, bpy.types.Image)
+                and datablock.source in {"GENERATED", "VIEWER"}
+            )
         ):
             continue
         try:
