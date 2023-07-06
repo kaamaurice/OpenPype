@@ -20,7 +20,7 @@ if __name__ == "__main__":
         # skip render result, compositing and generated images
         if (
             isinstance(datablock, bpy.types.Images)
-            and datablock.source in ("GENERATED", "VIEWER")
+            and datablock.source in {"GENERATED", "VIEWER"}
         ):
             continue
         try:
