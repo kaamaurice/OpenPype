@@ -9,7 +9,7 @@ import openpype.hosts.blender.api.action
 from openpype.pipeline.publish import ValidateContentsOrder
 
 
-class ValidateSetdressObjectNames(pyblish.api.InstancePlugin):
+class ValidateSetdressObjectNames(pyblish.api.Validator):
     """Validate that the objects names don't have special characters."""
 
     order = ValidateContentsOrder
