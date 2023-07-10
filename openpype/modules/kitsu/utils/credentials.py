@@ -39,7 +39,7 @@ def validate_credentials(
     if not isinstance(user_data, dict):
         user_data = {}
     user_data["openpype_local_site_id"] = get_local_site_id()
-    gazu.client.put(f"data/persons/{user_id}", user_data)
+    gazu.client.put(f"data/persons/{user_id}", {"data": user_data})
 
     emit_event("kitsu.user.logged", data={"username": login}, source="kitsu")
 
