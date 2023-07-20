@@ -1,13 +1,9 @@
-import os
 from pathlib import Path
 from typing import List, Set, Tuple
 
 import bpy
 
-from openpype.pipeline import (
-    legacy_io,
-    publish,
-)
+from openpype.pipeline import publish
 from openpype.lib import source_hash
 from openpype.hosts.blender.api import plugin, get_compress_setting
 from openpype.settings.lib import get_project_settings
@@ -21,7 +17,7 @@ class ExtractBlend(publish.Extractor):
     families = ["model", "camera", "rig", "layout", "setdress"]
     optional = True
 
-    pack_images = True  # TODO must be a OP setting
+    pack_images = False
 
     def process(self, instance):
         # Define extract output file path
@@ -74,20 +70,21 @@ class ExtractBlend(publish.Extractor):
         if collections:
             data_blocks.update(collections)
 
-        # Get images used by datablocks and process resources
+        # Get images used by datablocks
         used_images = self._get_used_images(data_blocks)
-        transfers, hashes, remapped = self._process_resources(
-            instance, used_images
-        )
 
         # Pack used images in the blend files.
         packed_images = set()
-        # TODO setting
-        # if self.pack_images:
-        #     for image in used_images:
-        #         if not image.packed_file and image.source != "GENERATED":
-        #             packed_images.add((image, image.is_dirty))
-        #             image.pack()
+        if self.pack_images:
+            for image in used_images:
+                if not image.packed_file and image.source != "GENERATED":
+                    packed_images.add((image, image.is_dirty))
+                    image.pack()
+
+        # process resources
+        transfers, hashes, remapped = self._process_resources(
+            instance, used_images + set(bpy.data.texts) + set(bpy.data.sounds)
+        )
 
         self._write_data(filepath, data_blocks)
 
@@ -149,7 +146,8 @@ class ExtractBlend(publish.Extractor):
         """Get images used by the datablocks.
 
         Args:
-            datablocks (Set[bpy.types.ID], optional): Datablocks to get images from. Defaults to None.
+            datablocks (Set[bpy.types.ID], optional): Datablocks to get images
+                from. Defaults to None.
 
         Returns:
             Set[bpy.types.Image]: Images used.
@@ -161,37 +159,41 @@ class ExtractBlend(publish.Extractor):
         }
 
     def _process_resources(
-        self, instance: dict, images: set
-    ) -> Tuple[List[Tuple[str, str]], dict, Set[Tuple[bpy.types.Image, Path]]]:
-        """Extract the textures to transfer, copy them to the resource
+        self, instance: dict, resources: set
+    ) -> Tuple[List[Tuple[str, str]], dict, Set[Tuple[bpy.types.ID, Path]]]:
+        """Extract the resources to transfer, copy them to the resource
         directory and remap the node paths.
 
         Args:
-            instance (dict): Instance with textures
-            images (set): Blender Images to publish
+            instance (dict): Instance with resources
+            resources (set): Blender resources to publish
 
         Returns:
-            Tuple[Tuple[str, str], dict, Set[Tuple[bpy.types.Image, Path]]]:
+            Tuple[Tuple[str, str], dict, Set[Tuple[bpy.types.ID, Path]]]:
                 (Files to copy and transfer with published blend,
                 source hashes for later file optim,
-                remapped images with source file path)
+                remapped filepath with source file path)
         """
         # Process the resource files
         transfers = []
         hashes = {}
         remapped = set()
-        for image in {
-            img
-            for img in images
-            if img.source in {"FILE", "SEQUENCE", "MOVIE"}
-            and not img.packed_file
-        }:
-            # Skip image from library or internal
-            if image.library or not image.filepath:
+        for resource in resources:
+            # Skip resource from library or internal
+            if resource.library or not resource.filepath:
+                continue
+            # Skip generated or packed images
+            if (
+                isinstance(resource, bpy.types.Image)
+                and (
+                    not resource.source in {"FILE", "SEQUENCE", "MOVIE"}
+                    or resource.packed_file
+                )
+            ):
                 continue
 
             # Get source and destination paths
-            sourcepath = image.filepath  # Don't every modify source_image
+            sourcepath = resource.filepath
             destination = Path(
                 instance.data["resourcesDir"], Path(sourcepath).name
             )
@@ -202,64 +204,17 @@ class ExtractBlend(publish.Extractor):
             # Store the hashes from hash to destination to include in the
             # database
             # NOTE Keep source hash system in case HARDLINK system works again
-            texture_hash = source_hash(sourcepath)
-            hashes[texture_hash] = destination.as_posix()
+            resource_hash = source_hash(sourcepath)
+            hashes[resource_hash] = destination.as_posix()
 
-            # Remap source image to resources directory
-            image.filepath = bpy.path.relpath(
+            # Remap source file to resources directory
+            resource.filepath = bpy.path.relpath(
                 destination.as_posix(), start=instance.data["publishDir"]
             )
 
             # Keep remapped to restore after publishing
-            remapped.add((image, sourcepath))
+            remapped.add((resource, sourcepath))
 
         self.log.info("Finished remapping destinations...")
 
         return transfers, hashes, remapped
-
-    def _process_texture(self, filepath: Path, force: bool) -> Tuple[str, str]:
-        """Process a single texture file on disk for publishing.
-        This will:
-            1. Check whether it's already published, if so it will do hardlink
-            2. If not published and maketx is enabled, generate a new .tx file.
-            3. Compute the destination path for the source file.
-        Args:
-            filepath (str): The source file path to process.
-        Returns: Reference type, Texture hash
-        """
-        # Hash source texture to match if already published
-        texture_hash = source_hash(filepath.as_posix())
-
-        # If source has been published before with the same settings,
-        # then don't reprocess but hardlink from the original
-        existing = legacy_io.distinct(
-            f"data.sourceHashes.{texture_hash}", {"type": "version"}
-        )
-        if existing and not force:
-            self.log.info("Found hash in database, preparing hardlink...")
-            source = next((p for p in existing if os.path.exists(p)), None)
-            if source:
-                return "HARDLINK", texture_hash
-            else:
-                self.log.warning(
-                    (
-                        "Paths not found on disk, "
-                        f"skipping hardlink: {existing}"
-                    )
-                )
-
-        return "COPY", texture_hash
-
-    def _resource_destination(self, instance: dict, filepath: Path) -> Path:
-        """Get resource destination path.
-
-        Args:
-            instance (dict): Current Instance.
-            filepath (Path): Resource path
-
-        Returns:
-            Path: Path to resource file
-        """
-        resources_dir = instance.data["resourcesDir"]
-
-        return Path(resources_dir, filepath.name)
