@@ -83,7 +83,8 @@ class ExtractBlend(publish.Extractor):
 
         # process resources
         transfers, hashes, remapped = self._process_resources(
-            instance, used_images + set(bpy.data.texts) + set(bpy.data.sounds)
+            instance,
+            set(used_images) | set(bpy.data.texts) | set(bpy.data.sounds),
         )
 
         self._write_data(filepath, data_blocks)
