@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Set
+from typing import List, Set, Tuple
 
 import pyblish
 import bpy
@@ -14,7 +14,7 @@ class ExtractWorkfile(extract_blend.ExtractBlend):
     label = "Extract workfile"
     hosts = ["blender"]
     families = ["workfile"]
-    
+
     # Run first
     order = pyblish.api.ExtractorOrder - 0.1
 
@@ -37,4 +37,24 @@ class ExtractWorkfile(extract_blend.ExtractBlend):
         Returns:
             Set[bpy.types.Image]: All images in blend file
         """
-        return bpy.data.images
+        return set(bpy.data.images)
+
+    def _process_resources(
+        self, instance: dict, resources: set
+    ) -> Tuple[List[Tuple[str, str]], dict, Set[Tuple[bpy.types.ID, Path]]]:
+        """Override to add texts and sounds to resources.
+
+        Args:
+            instance (dict): Instance with resources
+            resources (set): Blender resources to publish
+
+        Returns:
+            Tuple[Tuple[str, str], dict, Set[Tuple[bpy.types.ID, Path]]]:
+                (Files to copy and transfer with published blend,
+                source hashes for later file optim,
+                remapped filepath with source file path)
+        """
+
+        return super()._process_resources(
+            instance, resources | set(bpy.data.texts) | set(bpy.data.sounds)
+        )
