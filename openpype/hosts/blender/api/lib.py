@@ -285,7 +285,7 @@ def update_scene_containers():
         container[AVALON_PROPERTY] = container_metadata
         container.library = (
             entity.override_library.reference.library
-            if entity.override_library
+            if entity.override_library and entity.override_library.reference
             else entity.library
         )
 
