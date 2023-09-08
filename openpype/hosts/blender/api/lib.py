@@ -202,8 +202,6 @@ def _recursive_collect_user_links(
     # cannot process twice the same datablock
     if datablock in not_linked:
         return
-    else:
-        not_linked.add(datablock)
 
     for user in user_map.get(datablock, []):
         # Check not self reference to avoid infinite loop
@@ -216,6 +214,7 @@ def _recursive_collect_user_links(
         elif user == target_user_datablock:
             links.add(datablock)
         elif user not in links | not_linked:
+            not_linked.add(datablock)
             _recursive_collect_user_links(
                 user, target_user_datablock, links, not_linked, user_map
             )
@@ -223,7 +222,6 @@ def _recursive_collect_user_links(
         # Add datablock to links if user is linked to target datablock
         if user in links:
             links.add(datablock)
-            not_linked.remove(datablock)
             break
 
 
