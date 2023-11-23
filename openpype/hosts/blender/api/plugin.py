@@ -18,7 +18,7 @@ from openpype.hosts.blender.api.properties import (
 )
 from openpype.hosts.blender.api.utils import (
     BL_OUTLINER_TYPES,
-    BL_TYPE_DATAPATH,
+    BL_TYPE_DATACOL,
     BL_TYPE_ICON,
     build_op_basename,
     ensure_unique_name,
@@ -109,7 +109,7 @@ def context_override(
                             active_object=active,
                             selected_objects=selected,
                         )
-    raise Exception("Could not create a custom Blender context.") 
+    raise Exception("Could not create a custom Blender context.")
 
 
 def is_container(entity, family: Optional[str] = None) -> bool:
@@ -509,7 +509,7 @@ class Creator(LegacyCreator):
 
 class Loader(LoaderPlugin):
     """Base class for Blender Loader plug-ins.
-    
+
     All datablock are handled the same way, regardless of their type.
     Outliner types (Collections and Objects) may have some treatment exceptions.
     """
@@ -518,7 +518,7 @@ class Loader(LoaderPlugin):
 
     # Collection color visible in outliner for loaded containers
     color_tag = "COLOR_08"  # Brown
-    
+
     def _get_blend_container(
         self, container: dict
     ) -> Optional[OpenpypeContainer]:
@@ -595,7 +595,7 @@ class Loader(LoaderPlugin):
             container = create_container(container_name, datablocks)
 
         return container
-    
+
     @abstractmethod
     def _load_library_as_container(
         self,
@@ -616,7 +616,7 @@ class Loader(LoaderPlugin):
                 (Container, Datablocks)
         """
         pass
-    
+
     @exec_process
     def load(
         self,
@@ -739,7 +739,7 @@ class Loader(LoaderPlugin):
 
         A remapping is attempted on all datablocks, trying to match type
         and source name with one of the loaded datablocks.
-        As Blender uses names as unique IDs for each data collection type, 
+        As Blender uses names as unique IDs for each data collection type,
         the name the datablock has in the source blend file is kept as 'source_name'.
 
         Args:
@@ -841,12 +841,12 @@ class Loader(LoaderPlugin):
         orphans_purge()
 
         return container, datablocks
-    
+
     @exec_process
     def remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.
 
-        As Blender purges datablocks is not used,clearing all 
+        As Blender purges datablocks is not used,clearing all
         references in the file is sufficient.
 
         Arguments:
@@ -863,13 +863,13 @@ class Loader(LoaderPlugin):
         # Remove fake user
         for d_ref in container.datablock_refs:
             if d_ref.datablock:
-                datapath = getattr(
-                    bpy.data, BL_TYPE_DATAPATH.get(type(d_ref.datablock), ""), None
+                datacol = getattr(
+                    bpy.data, BL_TYPE_DATACOL.get(type(d_ref.datablock), ""), None
                 )
-                if not datapath:
+                if not datacol:
                     continue
                 d_ref.datablock.use_fake_user = False
-                datapath.remove(d_ref.datablock)
+                datacol.remove(d_ref.datablock)
 
         # Unreference container datablocks
         container.datablock_refs.clear()
@@ -1095,7 +1095,7 @@ class BlendLoader(Loader):
                 "'load_type' attribute must be set by loader subclass to:"
                 "'APPEND', 'INSTANCE' or 'LINK'."
             )
-       
+
         return load_func(*args, **kwargs)
 
 

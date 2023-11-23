@@ -23,8 +23,8 @@ from openpype.pipeline.workfile import get_last_workfile_representation
 # Key for metadata dict
 AVALON_PROPERTY = "avalon"
 
-# Match Blender type to a datapath to look into. Needed for native UI creator.
-BL_TYPE_DATAPATH = (  # TODO rename DATACOL
+# Match Blender type to a datacol to look into. Needed for native UI creator.
+BL_TYPE_DATACOL = (  # TODO rename DATACOL
     {  # NOTE Order is important for some hierarchy based processes!
         bpy.types.Collection: "collections",  # NOTE Must be always first
         bpy.types.Object: "objects",
@@ -606,7 +606,7 @@ def load_blend_datablocks(
         data_to,
     ):
         for bl_type in bl_types:
-            data_collection_name = BL_TYPE_DATAPATH.get(bl_type)
+            data_collection_name = BL_TYPE_DATACOL.get(bl_type)
             loaded_datablocks = list(
                 getattr(data_from, data_collection_name)
             )
@@ -714,9 +714,9 @@ def load_blend_datablocks(
 
 def replace_datablocks(old_datablocks:Set[bpy.types.ID], new_datablocks:Set[bpy.types.ID]):
     """Replace datablocks with other ones matching their type and name.
-    
+
     For a more accurate matching, the 'source_name' key is tested first.
-    Transform, modifiers, constraints, drivers and action are transfered. 
+    Transform, modifiers, constraints, drivers and action are transfered.
     """
     # Rename old datablocks
     for old_datablock in old_datablocks:
