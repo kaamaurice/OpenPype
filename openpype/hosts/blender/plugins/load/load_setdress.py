@@ -17,11 +17,7 @@ class LinkSetdressLoader(plugin.BlendLoader):
     load_type = "LINK"
 
 
-<<<<<<< Updated upstream
-class AppendSetdressLoader(plugin.BlendLibraryLoader):
-=======
 class AppendSetdressLoader(plugin.BlendLoader):
->>>>>>> Stashed changes
     """Append setdress from a .blend file."""
 
     families = ["setdress"]
