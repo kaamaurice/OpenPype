@@ -5,7 +5,7 @@ import bpy
 from openpype.hosts.blender.api import plugin
 
 
-class FbxModelLoader(plugin.AssetLoader):
+class FbxModelLoader(plugin.Loader):
     """Import FBX models.
 
     Stores the imported asset in a collection named after the asset.
