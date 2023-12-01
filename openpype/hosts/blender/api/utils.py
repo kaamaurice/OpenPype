@@ -24,7 +24,7 @@ from openpype.pipeline.workfile import get_last_workfile_representation
 AVALON_PROPERTY = "avalon"
 
 # Match Blender type to a datacol to look into. Needed for native UI creator.
-BL_TYPE_DATACOL = (  # TODO rename DATACOL
+BL_TYPE_DATACOL = (
     {  # NOTE Order is important for some hierarchy based processes!
         bpy.types.Collection: "collections",  # NOTE Must be always first
         bpy.types.Object: "objects",

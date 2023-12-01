@@ -615,7 +615,7 @@ class Loader(LoaderPlugin):
             Tuple[OpenpypeContainer, List[bpy.types.ID]]:
                 (Container, Datablocks)
         """
-        pass
+        raise NotImplementedError()
 
     @exec_process
     def load(

@@ -49,7 +49,6 @@ class LayoutLoader(plugin.BlendLoader):
     def load(self, *args, **kwargs):
         """Override `load` to create one animation instance by loaded rig."""
         container, datablocks = super().load(*args, **kwargs)
-        self._make_local_actions(container)
 
         # Make loaded actions local, original ones are kept for reference.
         self._make_local_actions(container)
