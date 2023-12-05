@@ -738,12 +738,17 @@ def draw_gather_into_collection(self, context):
 
     Only if collections are handled by creator family.
     """
-    if self.datacol in {BL_TYPE_DATACOL.get(t) for t in BL_OUTLINER_TYPES} and bpy.types.Collection.__name__ in {
-        t[1]
-        for t in context.scene["openpype_creators"][self.creator_name][
-            "bl_types"
-        ]
-    } or self.use_selection:
+    if (
+        self.datacol in {BL_TYPE_DATACOL.get(t) for t in BL_OUTLINER_TYPES}
+        and bpy.types.Collection.__name__
+        in {
+            t[1]
+            for t in context.scene["openpype_creators"][self.creator_name][
+                "bl_types"
+            ]
+        }
+        or self.use_selection
+    ):
         self.layout.prop(self, "gather_into_collection")
 
 

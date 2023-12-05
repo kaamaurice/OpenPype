@@ -470,7 +470,8 @@ def make_paths_absolute(source_filepath: Path = None):
                     isinstance(d, bpy.types.Image)
                     and d.source == "TILED"
                     and not d.packed_file
-                    or Path(d.filepath).name in {
+                    or Path(d.filepath).name
+                    in {
                         Path(file.get("path", "")).name
                         for file in workfile_repre.get("files")
                     }
@@ -607,9 +608,7 @@ def load_blend_datablocks(
     ):
         for bl_type in bl_types:
             data_collection_name = BL_TYPE_DATACOL.get(bl_type)
-            loaded_datablocks = list(
-                getattr(data_from, data_collection_name)
-            )
+            loaded_datablocks = list(getattr(data_from, data_collection_name))
             setattr(
                 data_to,
                 data_collection_name,
@@ -617,9 +616,7 @@ def load_blend_datablocks(
             )
 
             # Keep collection name
-            loaded_data_collections.append(
-                data_collection_name
-            )
+            loaded_data_collections.append(data_collection_name)
 
             # Keep loaded datablocks names
             loaded_names.extend([str(l) for l in loaded_datablocks])
@@ -638,9 +635,7 @@ def load_blend_datablocks(
 
         # Remove fake user from loaded datablocks
         datacol = getattr(bpy.data, datacol_name)
-        seq = [
-            False if d in datablocks else d.use_fake_user for d in datacol
-        ]
+        seq = [False if d in datablocks else d.use_fake_user for d in datacol]
         datacol.foreach_set("use_fake_user", seq)
 
     # Override datablocks if needed
@@ -702,17 +697,15 @@ def load_blend_datablocks(
 
     # Add meshes to datablocks
     datablocks.update(
-        {
-            d.data
-            for d in datablocks
-            if d and isinstance(d, bpy.types.Object)
-        }
+        {d.data for d in datablocks if d and isinstance(d, bpy.types.Object)}
     )
 
     return datablocks
 
 
-def replace_datablocks(old_datablocks:Set[bpy.types.ID], new_datablocks:Set[bpy.types.ID]):
+def replace_datablocks(
+    old_datablocks: Set[bpy.types.ID], new_datablocks: Set[bpy.types.ID]
+):
     """Replace datablocks with other ones matching their type and name.
 
     For a more accurate matching, the 'source_name' key is tested first.
@@ -738,7 +731,9 @@ def replace_datablocks(old_datablocks:Set[bpy.types.ID], new_datablocks:Set[bpy.
 
     # Unlink from parent collection if existing
     parent_collections = {}
-    for outliner_datablock in get_root_datablocks(old_datablocks, BL_OUTLINER_TYPES):
+    for outliner_datablock in get_root_datablocks(
+        old_datablocks, BL_OUTLINER_TYPES
+    ):
         if parent_collection := get_parent_collection(outliner_datablock):
             unlink_from_collection(outliner_datablock, parent_collection)
 
@@ -763,8 +758,7 @@ def replace_datablocks(old_datablocks:Set[bpy.types.ID], new_datablocks:Set[bpy.
                 d
                 for d in datablocks_to_remap
                 if type(d) is type(old_datablock)
-                and old_datablock.get("source_name")
-                == d.get("source_name")
+                and old_datablock.get("source_name") == d.get("source_name")
             ),
             None,
         ):
@@ -823,9 +817,7 @@ def replace_datablocks(old_datablocks:Set[bpy.types.ID], new_datablocks:Set[bpy.
             if hasattr(old_datablock, "pose") and old_datablock.pose:
                 for bone in old_datablock.pose.bones:
                     if new_datablock.pose:
-                        if new_bone := new_datablock.pose.bones.get(
-                            bone.name
-                        ):
+                        if new_bone := new_datablock.pose.bones.get(bone.name):
                             transfer_stack(bone, "constraints", new_bone)
 
                             # Transfer custom properties
@@ -895,9 +887,7 @@ def replace_datablocks(old_datablocks:Set[bpy.types.ID], new_datablocks:Set[bpy.
         datablocks_to_change_parent = {
             d
             for d in new_datablocks
-            if d
-            and not d.library
-            and d.get("source_name") in datablock_names
+            if d and not d.library and d.get("source_name") in datablock_names
         }
         link_to_collection(datablocks_to_change_parent, parent_collection)
 

@@ -36,7 +36,10 @@ if __name__ == "__main__":
         "--datacols",
         type=str,
         nargs="*",
-        help="list of data collections (bpy.data.<collection>) to get datablocks from",
+        help=(
+            "list of data collections (bpy.data.<collection>) "
+            "to get datablocks from"
+        ),
         required=True,
         # TODO set default with outliner types
     )

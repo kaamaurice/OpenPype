@@ -511,7 +511,8 @@ class Loader(LoaderPlugin):
     """Base class for Blender Loader plug-ins.
 
     All datablock are handled the same way, regardless of their type.
-    Outliner types (Collections and Objects) may have some treatment exceptions.
+    Outliner types (Collections and Objects) may have some treatment
+    exceptions.
     """
 
     hosts = ["blender"]
@@ -644,7 +645,10 @@ class Loader(LoaderPlugin):
         container_basename = build_op_basename(asset, name)
 
         # Pick load function and execute
-        container, datablocks = self._load_library_as_container(libpath, container_basename)
+        container, datablocks = self._load_library_as_container(
+            libpath,
+            container_basename,
+        )
 
         # Stop if no container
         if not container:
@@ -740,7 +744,8 @@ class Loader(LoaderPlugin):
         A remapping is attempted on all datablocks, trying to match type
         and source name with one of the loaded datablocks.
         As Blender uses names as unique IDs for each data collection type,
-        the name the datablock has in the source blend file is kept as 'source_name'.
+        the name the datablock has in the source blend file is kept
+        as 'source_name'.
 
         Args:
             container (OpenpypeContainer): Container to replace datablocks of.
@@ -768,7 +773,9 @@ class Loader(LoaderPlugin):
 
         # Update override library operations from asset objects if available.
         for obj in datablocks:
-            if isinstance(obj, bpy.types.Object) and getattr(obj.override_library, "operations_update", None):
+            if isinstance(obj, bpy.types.Object) and getattr(
+                obj.override_library, "operations_update", None
+            ):
                 obj.override_library.operations_update()
 
         return container, datablocks
@@ -846,8 +853,8 @@ class Loader(LoaderPlugin):
     def remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.
 
-        As Blender purges datablocks is not used,clearing all
-        references in the file is sufficient.
+        As Blender purges datablocks, clearing all references
+        in the file is sufficient.
 
         Arguments:
             container: Container to remove.
@@ -920,7 +927,12 @@ class BlendLoader(Loader):
             Tuple[OpenpypeContainer, Set[bpy.types.ID]]:
                 (Created scene container, Loaded datablocks)
         """
-        datablocks = load_blend_datablocks(libpath, self.bl_types, link, do_override)
+        datablocks = load_blend_datablocks(
+            libpath,
+            self.bl_types,
+            link,
+            do_override,
+        )
 
         # Put into container
         container = self._containerize_datablocks(
