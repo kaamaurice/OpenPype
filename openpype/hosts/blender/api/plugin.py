@@ -598,7 +598,7 @@ class Loader(LoaderPlugin):
         return container
 
     @abstractmethod
-    def _load_library_as_container(
+    def load_library_as_container(
         self,
         libpath: Path,
         container_name: str,
@@ -645,7 +645,7 @@ class Loader(LoaderPlugin):
         container_basename = build_op_basename(asset, name)
 
         # Pick load function and execute
-        container, datablocks = self._load_library_as_container(
+        container, datablocks = self.load_library_as_container(
             libpath,
             container_basename,
         )
@@ -763,7 +763,7 @@ class Loader(LoaderPlugin):
         container.datablock_refs.clear()
 
         # Load new into same container
-        container, datablocks = self._load_library_as_container(
+        container, datablocks = self.load_library_as_container(
             new_libpath,
             new_container_name,
             container=container,
@@ -1081,7 +1081,7 @@ class BlendLoader(Loader):
         """Can be implemented by a sub-class"""
         pass
 
-    def _load_library_as_container(
+    def load_library_as_container(
         self,
         *args,
         **kwargs
