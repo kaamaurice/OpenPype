@@ -867,7 +867,11 @@ def replace_datablocks(
                     for j, var in enumerate(driver.driver.variables):
                         for k, target in enumerate(var.targets):
                             target.id = (
-                                old_datablock.data.shape_keys.animation_data.drivers[
+                                old_datablock
+                                .data
+                                .shape_keys
+                                .animation_data
+                                .drivers[
                                     i
                                 ]
                                 .driver.variables[j]
