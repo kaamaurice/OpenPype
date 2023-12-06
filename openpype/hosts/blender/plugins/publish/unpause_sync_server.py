@@ -86,8 +86,6 @@ class UnpauseSyncServer(pyblish.api.ContextPlugin):
     order = StartTimer.order
 
     def process(self, context):
-        project_name = context.data["projectEntity"]["name"]
-
         # Wait for all started futures to finish
         subprocess_errors = False
         for future in as_completed(
@@ -114,7 +112,9 @@ class UnpauseSyncServer(pyblish.api.ContextPlugin):
 
         # Unpause sync server
         sync_server_module = context.data["openPypeModules"]["sync_server"]
-        sync_server_module.unpause_project(project_name)
+        sync_server_module.unpause_project(
+            context.data["projectEntity"]["name"]
+        )
 
         if subprocess_errors:
             raise RuntimeError(
