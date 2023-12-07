@@ -1284,14 +1284,27 @@ class AssetLoader(Loader):
 
                                 # Transfer custom properties
                                 for k, v in bone.items():
-                                    # Consider if value has changed between source datablocks
-                                    # that it is an update which should be preserved locally.
-                                    old_source_bone = old_datablock.override_library.reference.pose.bones[
-                                        bone.name
-                                    ]
-                                    new_source_bone = new_datablock.override_library.reference.pose.bones[
-                                        new_bone.name
-                                    ]
+                                    # Consider if value has changed between
+                                    # source datablocks that it is an update
+                                    # which should be preserved locally.
+                                    old_source_bone = (
+                                        old_datablock
+                                        .override_library
+                                        .reference
+                                        .pose
+                                        .bones[
+                                            bone.name
+                                        ]
+                                    )
+                                    new_source_bone = (
+                                        new_datablock
+                                        .override_library
+                                        .reference
+                                        .pose
+                                        .bones[
+                                            new_bone.name
+                                        ]
+                                    )
                                     if not (
                                         is_source_switch
                                         and old_source_bone.get(k)
