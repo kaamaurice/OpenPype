@@ -156,15 +156,11 @@ def get_user_links(
         all_not_linked -= current_user_links
 
     # Merge datablocks of users used by other users into theirs
-    used_user_map = {}
-    for user, datablocks in users_links.items():
-        for other_user in users_links:
+    for user, datablocks in users_links.copy().items():
+        for other_user in users_links.copy():
             if other_user in datablocks and other_user != user:
-                used_user_map.setdefault(user, []).append(other_user)
-    for user, used_users in used_user_map.items():
-        for used_user in used_users:
-            users_links[user] |= users_links[used_user]
-            del users_links[used_user]
+                users_links[user] |= users_links[other_user]
+                del users_links[other_user]
 
     # Filter datablocks by types
     if types:
@@ -273,6 +269,15 @@ def update_scene_containers():
             container_metadata.get("asset_name"),
             container_metadata.get("name"),
         )
+
+        # Check if container already exists
+        if (
+            container := bpy.context.window_manager.openpype_containers.get(
+                container_name
+            )
+        ) and container_name not in entity.name:
+            add_datablocks_to_container({entity} | datablocks, container)
+            continue
 
         # Filter datablocks by loader types
         if loader := containers_loaders.get(entity):
