@@ -272,9 +272,10 @@ def update_scene_containers():
 
         # Check if container already exists
         if (
-            container_name in bpy.context.window_manager.openpype_containers
-            and container_name not in entity.name
-        ):
+            container := bpy.context.window_manager.openpype_containers.get(
+                container_name
+            )
+        ) and container_name not in entity.name:
             add_datablocks_to_container({entity} | datablocks, container)
             continue
 
