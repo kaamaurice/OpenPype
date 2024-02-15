@@ -31,9 +31,9 @@ def get_root_containers_from_datablocks(
     datablocks: List[bpy.types.ID],
 ) -> List[bpy.types.ID]:
     """Get root containers from a list of datablocks.
-    
+
     Args:
-        datablocks (List[bpy.types.ID]): Datablocks to get root containers from.
+        datablocks (List[bpy.types.ID]): Datablocks to get root containers.
 
     Returns:
         List[bpy.types.ID]: Root containers.
@@ -45,7 +45,7 @@ def get_root_containers_from_datablocks(
     # Get all avalon data from openpype_containers as list of dicts
     all_containers_avalon_data = [
         c[AVALON_PROPERTY].to_dict()
-        for c in bpy.context.window_manager.openpype_containers
+        for c in openpype_containers
     ]
 
     return [
@@ -61,7 +61,7 @@ def get_root_containers_from_datablocks(
         # and iterate over all provided datablocks
         | set(datablocks)
         # Match by the dictionary representation of the avalon data
-        if root_container.get(AVALON_PROPERTY, {})
+        if root_container.get(AVALON_PROPERTY)
         and root_container[AVALON_PROPERTY].to_dict()
         in all_containers_avalon_data
     ]
