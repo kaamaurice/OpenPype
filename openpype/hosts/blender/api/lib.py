@@ -1,4 +1,5 @@
 from itertools import chain
+import itertools
 import os
 import traceback
 import importlib
@@ -24,6 +25,47 @@ from openpype.pipeline.constants import AVALON_CONTAINER_ID
 from . import pipeline
 
 log = Logger.get_logger(__name__)
+
+
+def get_root_containers_from_datablocks(
+    datablocks: List[bpy.types.ID],
+) -> List[bpy.types.ID]:
+    """Get root containers from a list of datablocks.
+    
+    Args:
+        datablocks (List[bpy.types.ID]): Datablocks to get root containers from.
+
+    Returns:
+        List[bpy.types.ID]: Root containers.
+    """
+    openpype_containers = bpy.context.window_manager.openpype_containers
+    if not openpype_containers:
+        update_scene_containers()
+
+    # Get all avalon data from openpype_containers as list of dicts
+    all_containers_avalon_data = [
+        c[AVALON_PROPERTY].to_dict()
+        for c in bpy.context.window_manager.openpype_containers
+    ]
+
+    return [
+        root_container
+        # Iterate over all children of the outliner datablocks
+        for root_container in set(
+            itertools.chain.from_iterable(
+                get_all_outliner_children(d)
+                for d in datablocks
+                if isinstance(d, tuple(BL_OUTLINER_TYPES))
+            )
+        )
+        # and iterate over all provided datablocks
+        | set(datablocks)
+        # Match by the dictionary representation of the avalon data
+        if root_container.get(AVALON_PROPERTY, {})
+        and root_container[AVALON_PROPERTY].to_dict()
+        in all_containers_avalon_data
+    ]
+
 
 def add_datablocks_to_container(
     datablocks: List[bpy.types.ID],

@@ -1,14 +1,9 @@
-import itertools
-
-import bpy
-
 import pyblish.api
+
 from openpype.hosts.blender.api.utils import (
     AVALON_PROPERTY,
-    BL_OUTLINER_TYPES,
-    get_all_outliner_children,
-    get_root_containers_from_datablocks,
 )
+from openpype.hosts.blender.api.lib import get_root_containers_from_datablocks
 
 
 class CollectUpstreamInputs(pyblish.api.InstancePlugin):

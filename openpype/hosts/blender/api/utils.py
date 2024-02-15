@@ -18,7 +18,6 @@ from openpype.pipeline.load.plugins import (
 )
 from openpype.pipeline.load.utils import loaders_from_repre_context
 from openpype.pipeline.workfile import get_last_workfile_representation
-from python.openpype.hosts.blender.api.lib import update_scene_containers
 
 
 # Key for metadata dict
@@ -576,46 +575,6 @@ def get_used_datablocks(
         ).items()
         if users & user_datablocks
     }
-
-
-def get_root_containers_from_datablocks(
-    datablocks: List[bpy.types.ID],
-) -> List[bpy.types.ID]:
-    """Get root containers from a list of datablocks.
-    
-    Args:
-        datablocks (List[bpy.types.ID]): Datablocks to get root containers from.
-
-    Returns:
-        List[bpy.types.ID]: Root containers.
-    """
-    openpype_containers = bpy.context.window_manager.openpype_containers
-    if not openpype_containers:
-        update_scene_containers()
-
-    # Get all avalon data from openpype_containers as list of dicts
-    all_containers_avalon_data = [
-        c[AVALON_PROPERTY].to_dict()
-        for c in bpy.context.window_manager.openpype_containers
-    ]
-
-    return [
-        root_container
-        # Iterate over all children of the outliner datablocks
-        for root_container in set(
-            itertools.chain.from_iterable(
-                get_all_outliner_children(d)
-                for d in datablocks
-                if isinstance(d, tuple(BL_OUTLINER_TYPES))
-            )
-        )
-        # and iterate over all provided datablocks
-        | set(datablocks)
-        # Match by the dictionary representation of the avalon data
-        if root_container.get(AVALON_PROPERTY, {})
-        and root_container[AVALON_PROPERTY].to_dict()
-        in all_containers_avalon_data
-    ]
 
 
 def load_blend_datablocks(
