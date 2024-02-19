@@ -6,6 +6,7 @@ import types
 import logging
 import platform
 import uuid
+from typing import Optional
 
 import pyblish.api
 from pyblish.lib import MessageHandler
@@ -16,11 +17,13 @@ from openpype.client import (
     get_project,
     get_asset_by_id,
     get_asset_by_name,
+    get_subset_by_name,
     version_is_latest,
 )
 from openpype.lib.events import emit_event
 from openpype.modules import load_modules, ModulesManager
 from openpype.settings import get_project_settings
+from openpype.pipeline.create import get_subset_name
 
 from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy
@@ -37,7 +40,6 @@ from . import (
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
 )
-
 
 _is_installed = False
 _process_id = None
@@ -408,6 +410,44 @@ def get_current_project_asset(asset_name=None, asset_id=None, fields=None):
         if not asset_name:
             return None
     return get_asset_by_name(project_name, asset_name, fields=fields)
+
+
+def get_workfile_subset(
+        project_name: str,
+        asset_name: str,
+        task_name: str
+) -> Optional[dict]:
+    """Helper function to get workfile subset from project, asset and task.
+
+    Args:
+        project_name (str): Project's name.
+        asset_name (str): Asset's name.
+        task_name (str): Task's name.
+
+    Returns:
+        Optional[dict]: Related subset if found else None.
+    """
+    if not project_name or not asset_name or not task_name:
+        return None
+
+    asset_doc = get_asset_by_name(
+            project_name, asset_name, fields={"_id"}
+    )
+
+    if not asset_doc:
+        return None
+
+    return get_subset_by_name(
+        project_name,
+        get_subset_name(
+            "workfile",
+            "",
+            task_name,
+            asset_doc,
+            project_name=project_name
+        ),
+        asset_doc["_id"]
+    )
 
 
 def is_representation_from_latest(representation):

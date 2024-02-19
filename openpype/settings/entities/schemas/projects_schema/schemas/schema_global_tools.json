@@ -312,6 +312,29 @@
                             }
                         ]
                     }
+                },
+                {
+                    "type": "dict",
+                    "collapsible": true,
+                    "key": "LockFileInDb",
+                    "label": "Lock opened file in database",
+                    "checkbox_key": "enabled",
+                    "children": [
+
+                        {
+                            "type": "boolean",
+                            "key": "enabled",
+                            "label": "Enabled"
+                        },
+                        {
+                            "type": "number",
+                            "key": "flush_delay",
+                            "label": "Flush delay (hours)",
+                            "decimal": 2,
+                            "minimum": 0,
+                            "maximum": 72
+                        }
+                    ]
                 }
             ]
         },

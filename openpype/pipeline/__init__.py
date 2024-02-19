@@ -94,6 +94,7 @@ from .context_tools import (
     get_current_project_name,
     get_current_asset_name,
     get_current_task_name,
+    get_workfile_subset,
 )
 install = install_host
 uninstall = uninstall_host
@@ -193,6 +194,7 @@ __all__ = (
     "get_current_project_name",
     "get_current_asset_name",
     "get_current_task_name",
+    "get_workfile_subset",
 
     # Backwards compatible function names
     "install",

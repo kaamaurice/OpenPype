@@ -1,13 +1,14 @@
 """Blender operators and menus for use with Avalon."""
-
+import atexit
+import collections
+from functools import partial
 import os
+from pathlib import Path
+import platform
 from string import digits
 import sys
-import platform
 import time
 import traceback
-import collections
-from pathlib import Path
 from types import ModuleType
 from typing import Dict, List, Optional, Union
 
@@ -23,13 +24,18 @@ from openpype.client.entities import (
     get_asset_by_name,
     get_assets,
 )
-from openpype.hosts.blender.api.lib import add_datablocks_to_container
+from openpype.hosts.blender.api.lib import (
+    add_datablocks_to_container,
+    download_last_workfile,
+    save_as_local_workfile
+)
 from openpype.hosts.blender.api.utils import (
     BL_OUTLINER_TYPES,
     BL_TYPE_DATACOL,
     build_op_basename,
     get_parent_collection,
     link_to_collection,
+    make_paths_absolute,
     unlink_from_collection,
 )
 from openpype.pipeline import legacy_io
@@ -38,7 +44,20 @@ from openpype.pipeline.create.creator_plugins import (
     get_legacy_creator_by_name,
 )
 from openpype.pipeline.create.subset_name import get_subset_name
+from openpype.pipeline.lock import (
+    lock_subset,
+    unlock_subset,
+    get_lock_system_enabled,
+    subset_is_locked_and_lock_is_valid,
+)
+
+from openpype.pipeline.template_data import get_template_data_with_names
+from openpype.pipeline.workfile import (
+    get_last_workfile_with_version,
+    get_workfile_template_key,
+)
 from openpype.tools.utils import host_tools
+from openpype.tools.utils.lib import qt_app_context
 
 from .workio import OpenFileCacher
 
@@ -998,6 +1017,233 @@ class LaunchWorkFiles(LaunchQtApp):
         self._window.refresh()
 
 
+class BuildWorkFile(bpy.types.Operator):
+    """Build First Work File."""
+
+    bl_idname = "wm.avalon_builder"
+    bl_label = "Build First Workfile"
+    _app: QtWidgets.QApplication
+
+    # Should save property
+    save_as: bpy.props.BoolProperty(name="Save as...", default=True)
+    # Should clear current scene property
+    clear_scene: bpy.props.BoolProperty(
+        name="Clear current scene", default=False
+    )
+
+    def __init__(self):
+        print(f"Initialising {self.bl_idname}...")
+        self._app = BlenderApplication.get_app()
+        GlobalClass.app = self._app
+
+        if not bpy.app.timers.is_registered(_process_app_events):
+            bpy.app.timers.register(_process_app_events, persistent=True)
+
+    def _build_first_workfile(self, clear_scene: bool, save_as: bool):
+        """Execute Build First workfile process.
+
+        Args:
+            clear_scene (bool): Clear scene content before the build.
+            save_as (bool): Save as new incremented workfile after the build.
+        """
+        if clear_scene:
+            # Clear scene content
+            print("Clear scene content")
+
+            # clear all openpype instances
+            bpy.context.scene.openpype_instances.clear()
+            # clear all objects and collections
+            for obj in set(bpy.data.objects):
+                bpy.data.objects.remove(obj)
+            for collection in set(bpy.data.collections):
+                bpy.data.collections.remove(collection)
+            # clear sequencer
+            for seq in bpy.context.scene.sequence_editor.sequences:
+                bpy.context.scene.sequence_editor.sequences.remove(seq)
+            # purgne unused datablock
+            while bpy.data.orphans_purge(
+                do_local_ids=False, do_recursive=True
+            ):
+                pass
+            # clear all libraries
+            for library in bpy.data.libraries:
+                bpy.data.libraries.remove(library)
+            # Clear all worlds
+            for world in bpy.data.worlds:
+                bpy.data.worlds.remove(world)
+
+        print("Build Workfile")
+        build_workfile()
+
+        if save_as:
+            # Saving workfile
+            print("Saving workfile")
+
+            with qt_app_context():
+                session = legacy_io.Session
+                root = Path(work_root(session))
+                if not root.is_dir():
+                    root.mkdir()
+
+                # Set work file data for template formatting
+                project_name = session["AVALON_PROJECT"]
+                asset_name = session["AVALON_ASSET"]
+                task_name = session["AVALON_TASK"]
+                host_name = session["AVALON_APP"]
+
+                data = get_template_data_with_names(
+                    project_name, asset_name, task_name, host_name
+                )
+                data.update(
+                    {
+                        "version": get_last_workfile_with_version(
+                            root.as_posix(),
+                            Anatomy(project_name).templates[
+                                get_workfile_template_key(
+                                    task_name,
+                                    host_name,
+                                    project_name,
+                                )
+                            ]["file"],
+                            data,
+                            ["blend"],
+                        )[1]
+                        or 0,
+                        "ext": "blend",
+                    }
+                )
+
+                # Getting file name anatomy
+                file_path = (
+                    bpy.data.filepath
+                    or Anatomy(project_name).format(data)["work"]["file"]
+                )
+
+                # Saving
+                if file_path:
+                    file_path = version_up(root.joinpath(file_path).as_posix())
+                    save_file(file_path, copy=False)
+                else:
+                    print("Failed to save")
+
+    def execute(self, context):
+        mti = MainThreadItem(
+            self._build_first_workfile, self.clear_scene, self.save_as
+        )
+        execute_in_main_thread(mti)
+
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return bpy.context.window_manager.invoke_props_dialog(self, width=150)
+
+
+class WM_OT_CheckWorkfileUpToDate(bpy.types.Operator):
+    """Check if the current workfile is up to date.
+
+    If it's out of date, the workfile out of date dialog will open.
+    Otherwise, a dialog notifying user that their workfile is up to date will
+    appear.
+    """
+
+    bl_idname = "wm.check_workfile_up_to_date"
+    bl_label = "Check Workfile Up To Date"
+
+    action: bpy.props.EnumProperty(
+        name="Action Enum",
+        items=(
+            ("DOWNLOAD", "Download last workfile", "Download last workfile"),
+            ("QUIT", "Quit blender", "Quit blender"),
+            ("PROCEED", "Proceed anyway", "Proceed anyway AT YOUR OWN RISK"),
+        ),
+    )
+
+    def invoke(self, context, _event):
+        """Invoke this operator."""
+        context.scene.is_workfile_up_to_date = check_workfile_up_to_date()
+        if context.scene.is_workfile_up_to_date:
+            return context.window_manager.invoke_popup(self)
+        else:
+            return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        """Draw UI."""
+        if context.scene.is_workfile_up_to_date:
+            layout = self.layout
+            layout.ui_units_x = 7.5
+            layout.label(text="Your workfile is up to date!")
+        else:
+            col = self.layout.column()
+
+            # Display alert
+            row = col.row()
+            row.alert = True
+            row.label(text="Your workfile is out of date.")
+
+            # Display enum
+            col.prop(self, "action", expand=True)
+
+    def execute(self, context):
+        """Execute this operator."""
+        # Check workfile is up to date
+        if context.scene.is_workfile_up_to_date:
+            return {"FINISHED"}
+
+        if self.action == "DOWNLOAD":
+            context.window.cursor_set("WAIT")
+
+            # Get sync server module
+            sync_server = ModulesManager().modules_by_name.get("sync_server")
+            if not sync_server or not sync_server.enabled:
+                self.report(
+                    {"WARNING"},
+                    "Sync server module is disabled or unavailable.",
+                )
+                return {"CANCELLED"}
+
+            # Get current project, asset and task names
+            project_name = get_current_project_name()
+            asset_name = get_current_asset_name()
+            task_name = get_current_task_name()
+
+            # Download, copy locally and open last workfile
+            last_workfile_path, last_published_time = download_last_workfile(
+                project_name, asset_name, task_name
+            )
+            if local_workfile_path := save_as_local_workfile(
+                project_name, asset_name, task_name, last_workfile_path
+            ):
+                bpy.ops.wm.open_mainfile(filepath=local_workfile_path)
+
+                # Update variables
+                context.scene["op_published_time"] = last_published_time
+                context.scene.is_workfile_up_to_date = True
+
+                # TODO refactor when download_last_workfile split
+                # Remap paths to absolute with source path
+                make_paths_absolute(Path(last_workfile_path))
+
+                bpy.ops.wm.save_mainfile()
+                bpy.ops.wm.revert_mainfile()
+                return {"FINISHED"}
+            else:
+                self.report({"ERROR"}, "Failed to download last workfile.")
+                return {"CANCELLED"}
+        elif self.action == "QUIT":
+            bpy.ops.wm.quit_blender()
+            return {"FINISHED"}
+        elif self.action == "PROCEED":
+            return {"FINISHED"}
+        else:
+            self.report({"ERROR"}, "Undefined enum value error")
+            return {"CANCELLED"}
+
+    def cancel(self, context):
+        """Run when this operator is cancelled."""
+        if not context.scene.is_workfile_up_to_date:
+            bpy.ops.wm.check_workfile_up_to_date("INVOKE_DEFAULT")
+
+
 class TOPBAR_MT_avalon(bpy.types.Menu):
     """Avalon menu."""
 
@@ -1043,7 +1289,10 @@ class TOPBAR_MT_avalon(bpy.types.Menu):
 def draw_avalon_menu(self, context):
     """Draw the Avalon menu in the top bar."""
 
-    self.layout.menu(TOPBAR_MT_avalon.bl_idname)
+    self.layout.menu(
+        TOPBAR_MT_avalon.bl_idname,
+        icon="ERROR" if not context.scene.is_workfile_up_to_date else "NONE",
+    )
 
 
 class SCENE_OT_MakeContainerPublishable(bpy.types.Operator):
@@ -1289,6 +1538,82 @@ def discover_creators_handler(_):
         }
 
 
+class WM_OT_SubsetIsLocked(bpy.types.Operator):
+    """Check if the subset is locked or not.
+
+    If it's locked, the subset locked dialog will open.
+    Otherwise, a dialog notifying user that their subset is not locked will
+    appear.
+    """
+
+    bl_idname = "wm.subset_is_locked_operator"
+    bl_label = "Check opened subset is locked"
+
+    action: bpy.props.EnumProperty(
+        name="Action Enum",
+        items=(
+            ("QUIT", "Quit blender", "Quit blender"),
+            ("PROCEED", "Proceed anyway", "Proceed anyway AT YOUR OWN RISK"),
+        ),
+    )
+
+    def invoke(self, context, _):
+        """Invoke this operator."""
+        context.window_manager.subset_is_locked = (
+            subset_is_locked_and_lock_is_valid()
+        )
+        if context.window_manager.subset_is_locked:
+            return context.window_manager.invoke_props_dialog(self)
+        else:
+            # Lock file and unlock it on blender exit
+            subset = get_workfile_subset(
+                get_current_project_name(),
+                get_current_asset_name(),
+                get_current_task_name()
+            )
+            lock_subset(subset)
+            atexit.register(partial(unlock_subset, subset))
+            return context.window_manager.invoke_popup(self)
+
+    def draw(self, context):
+        """Draw UI."""
+        if context.window_manager.subset_is_locked:
+            col = self.layout.column()
+
+            # Display alert
+            row = col.row()
+            row.alert = True
+            row.label(text="Your subset is locked!")
+
+            # Display enum
+            col.prop(self, "action", expand=True)
+        else:
+            layout = self.layout
+            layout.ui_units_x = 7.5
+            layout.label(text="Subset is available!")
+
+    def execute(self, context):
+        """Execute this operator."""
+        if not context.window_manager.subset_is_locked:
+            return {"FINISHED"}
+
+        elif self.action == "QUIT":
+            bpy.ops.wm.quit_blender()
+            return {"FINISHED"}
+
+        elif self.action == "PROCEED":
+            return {"FINISHED"}
+
+        else:
+            self.report({"ERROR"}, "Undefined enum value error")
+            return {"CANCELLED"}
+
+    def cancel(self, context):
+        """Run when this operator is cancelled."""
+        if context.window_manager.subset_is_locked:
+            bpy.ops.wm.subset_is_locked_operator("INVOKE_DEFAULT")
+
+
 classes = [
     LaunchCreator,
     LaunchLoader,
@@ -1306,6 +1631,7 @@ classes = [
     SCENE_OT_DuplicateOpenpypeInstance,
     SCENE_OT_MoveOpenpypeInstance,
     SCENE_OT_MoveOpenpypeInstanceDatablock,
+    WM_OT_SubsetIsLocked,
 ]
 
 
@@ -1327,6 +1653,40 @@ def register():
 
     # Hack to store creators with parameters for optimization purpose
     bpy.app.handlers.load_post.append(discover_creators_handler)
+
+    # Regularly check that the workfile is up-to-date
+    bpy.app.timers.register(
+        update_workfile_up_to_date, first_interval=0, persistent=True
+    )
+
+    # Following actions needs to be launched when the scene is loaded
+    # but as they use operators, we can't use the load_post() handler
+    # as the UI is not totally available when it's triggered.
+    #
+    # That's why a timer is used, this way the code is launched
+    # as soon as the scene AND the ui are fully loaded.
+    #
+    # To call a delayed operator use:
+    # bpy.app.timers.register(partial(delayed_wm_operator, <your operator>), persistent=True)
+    def delayed_wm_operator(wm_operator):
+        if hasattr(
+            bpy.types, wm_operator.idname()
+        ):
+            wm_operator("INVOKE_DEFAULT")
+
+    # Check workfile is up-to-date
+    bpy.app.timers.register(
+        partial(delayed_wm_operator, bpy.ops.wm.check_workfile_up_to_date),
+        persistent=True,
+    )
+
+    # Check subset is locked
+    # As this is optional, check settings first
+    if get_lock_system_enabled():
+        bpy.app.timers.register(
+            partial(delayed_wm_operator, bpy.ops.wm.subset_is_locked_operator),
+            persistent=True,
+        )
 
 
 def unregister():
