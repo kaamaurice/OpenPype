@@ -7,7 +7,7 @@ import re
 class IntegrateKitsuNote(pyblish.api.ContextPlugin):
     """Integrate Kitsu Note"""
 
-    order = pyblish.api.IntegratorOrder
+    order = pyblish.api.IntegratorOrder - 0.01
     label = "Kitsu Note and Status"
     families = ["render", "image", "online", "plate", "kitsu"]
 
@@ -50,6 +50,13 @@ class IntegrateKitsuNote(pyblish.api.ContextPlugin):
 
     def process(self, context):
         for instance in context:
+            # Skip if comment is already set
+            if instance.data.get("kitsu_comment"):
+                self.log.info(
+                    "Kitsu comment already set, skipping comment creation instance..."
+                )
+                continue
+
             # Check if instance is a review by checking its family
             # Allow a match to primary family or any of families
             families = set(
