@@ -53,7 +53,8 @@ class IntegrateKitsuNote(pyblish.api.ContextPlugin):
             # Skip if comment is already set
             if instance.data.get("kitsu_comment"):
                 self.log.info(
-                    "Kitsu comment already set, skipping comment creation instance..."
+                    "Kitsu comment already set, "
+                    "skipping comment creation for instance..."
                 )
                 continue
 
