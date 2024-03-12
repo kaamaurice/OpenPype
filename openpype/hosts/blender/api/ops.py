@@ -1,13 +1,16 @@
 """Blender operators and menus for use with Avalon."""
 
+import atexit
+import collections
 import os
-from string import digits
-import sys
 import platform
+import sys
 import time
 import traceback
-import collections
+
+from functools import partial
 from pathlib import Path
+from string import digits
 from types import ModuleType
 from typing import Dict, List, Optional, Union
 
@@ -33,11 +36,23 @@ from openpype.hosts.blender.api.utils import (
     unlink_from_collection,
 )
 from openpype.pipeline import legacy_io
+from openpype.pipeline.context_tools import (
+    get_current_asset_name,
+    get_current_project_name,
+    get_current_task_name,
+    get_workfile_subset,
+)
 from openpype.pipeline.create.creator_plugins import (
     discover_legacy_creator_plugins,
     get_legacy_creator_by_name,
 )
 from openpype.pipeline.create.subset_name import get_subset_name
+from openpype.pipeline.lock import (
+    lock_subset,
+    get_lock_system_enabled,
+    subset_is_locked_and_lock_is_valid,
+    unlock_subset,
+)
 from openpype.tools.utils import host_tools
 
 from .workio import OpenFileCacher
@@ -93,6 +108,7 @@ class MainThreadItem:
     Item store callback (callable variable), arguments and keyword arguments
     for the callback. Item hold information about it's process.
     """
+
     not_set = object()
     sleep_time = 0.1
 
@@ -178,9 +194,8 @@ def _process_app_events() -> Optional[float]:
             msg = str(val)
             detail = "\n".join(traceback.format_exception(_clc, val, tb))
             dialog = QtWidgets.QMessageBox(
-                QtWidgets.QMessageBox.Warning,
-                "Error",
-                msg)
+                QtWidgets.QMessageBox.Warning, "Error", msg
+            )
             dialog.setMinimumWidth(500)
             dialog.setDetailedText(detail)
             dialog.setWindowFlags(
@@ -224,10 +239,7 @@ class LaunchQtApp(bpy.types.Operator):
         GlobalClass.app = self._app
 
         if not bpy.app.timers.is_registered(_process_app_events):
-            bpy.app.timers.register(
-                _process_app_events,
-                persistent=True
-            )
+            bpy.app.timers.register(_process_app_events, persistent=True)
 
     def execute(self, context):
         """Execute the operator.
@@ -282,7 +294,7 @@ class LaunchQtApp(bpy.types.Operator):
             #     self._window.setWindowFlags(origin_flags)
             #     self._window.show()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def before_window_show(self):
         return
@@ -308,8 +320,7 @@ class LaunchLoader(LaunchQtApp):
 
     def before_window_show(self):
         self._window.set_context(
-            {"asset": legacy_io.Session["AVALON_ASSET"]},
-            refresh=True
+            {"asset": legacy_io.Session["AVALON_ASSET"]}, refresh=True
         )
 
 
@@ -477,9 +488,9 @@ class ManageOpenpypeInstance:
         # Items are defaults from current creator plugin
         items=lambda self, context: [
             (default, default, "")
-            for default in context.scene["openpype_creators"][self.creator_name][
-                "defaults"
-            ]
+            for default in context.scene["openpype_creators"][
+                self.creator_name
+            ]["defaults"]
         ],
         update=_update_variant_name,
     )
@@ -566,7 +577,9 @@ class SCENE_OT_CreateOpenpypeInstance(
         if not self.use_selection:
             row = layout.row(align=True)
 
-            creator_plugin = context.scene["openpype_creators"][self.creator_name]
+            creator_plugin = context.scene["openpype_creators"][
+                self.creator_name
+            ]
 
             # Search data into list
             row.prop_search(
@@ -604,7 +617,7 @@ class SCENE_OT_CreateOpenpypeInstance(
             bpy.context.selected_objects
             if self.use_selection
             else [datacol.get(self.datablock_name)],
-            gather_into_collection=self.gather_into_collection
+            gather_into_collection=self.gather_into_collection,
         )
 
         return {"FINISHED"}
@@ -665,7 +678,9 @@ class SCENE_OT_AddToOpenpypeInstance(
         super().__init__()
 
         self.bl_types_count = len(
-            bpy.context.scene["openpype_creators"][self.creator_name]["bl_types"]
+            bpy.context.scene["openpype_creators"][self.creator_name][
+                "bl_types"
+            ]
         )
 
     def invoke(self, context, _event):
@@ -984,17 +999,21 @@ class LaunchWorkFiles(LaunchQtApp):
 
     def execute(self, context):
         result = super().execute(context)
-        self._window.set_context({
-            "asset": legacy_io.Session["AVALON_ASSET"],
-            "task": legacy_io.Session["AVALON_TASK"]
-        })
+        self._window.set_context(
+            {
+                "asset": legacy_io.Session["AVALON_ASSET"],
+                "task": legacy_io.Session["AVALON_TASK"],
+            }
+        )
         return result
 
     def before_window_show(self):
-        self._window.root = str(Path(
-            os.environ.get("AVALON_WORKDIR", ""),
-            os.environ.get("AVALON_SCENEDIR", ""),
-        ))
+        self._window.root = str(
+            Path(
+                os.environ.get("AVALON_WORKDIR", ""),
+                os.environ.get("AVALON_SCENEDIR", ""),
+            )
+        )
         self._window.refresh()
 
 
@@ -1016,8 +1035,8 @@ class TOPBAR_MT_avalon(bpy.types.Menu):
         else:
             pyblish_menu_icon_id = 0
 
-        asset = legacy_io.Session['AVALON_ASSET']
-        task = legacy_io.Session['AVALON_TASK']
+        asset = legacy_io.Session["AVALON_ASSET"]
+        task = legacy_io.Session["AVALON_TASK"]
         context_label = f"{asset}, {task}"
         context_label_item = layout.row()
         context_label_item.operator(
@@ -1273,9 +1292,7 @@ def draw_op_collection_menu(self, context):
 def discover_creators_handler(_):
     """Store creators parameters in scene for optimization."""
     enabled_plugins = [
-        cls
-        for cls in discover_legacy_creator_plugins()
-        if cls.enabled
+        cls for cls in discover_legacy_creator_plugins() if cls.enabled
     ]
     bpy.context.scene["openpype_creators"] = {}
     for creator in enabled_plugins:
@@ -1287,6 +1304,82 @@ def discover_creators_handler(_):
                 (BL_TYPE_DATACOL.get(t), t.__name__) for t in creator.bl_types
             ],
         }
+
+
+class WM_OT_SubsetIsLocked(bpy.types.Operator):
+    """Check if the subset is locked or not.
+
+    If it's locked, the subset locked dialog will open.
+    Otherwise, a dialog notifying user that their subset is not locked will
+    appear.
+    """
+
+    bl_idname = "wm.subset_is_locked_operator"
+    bl_label = "Check opened subset is locked"
+
+    action: bpy.props.EnumProperty(
+        name="Action Enum",
+        items=(
+            ("QUIT", "Quit blender", "Quit blender"),
+            ("PROCEED", "Proceed anyway", "Proceed anyway AT YOUR OWN RISK"),
+        ),
+    )
+
+    def invoke(self, context, _):
+        """Invoke this operator."""
+        context.window_manager.subset_is_locked = (
+            subset_is_locked_and_lock_is_valid()
+        )
+        if context.window_manager.subset_is_locked:
+            return context.window_manager.invoke_props_dialog(self)
+        else:
+            # Lock file and unlock it on blender exit
+            subset = get_workfile_subset(
+                get_current_project_name(),
+                get_current_asset_name(),
+                get_current_task_name(),
+            )
+            lock_subset(subset)
+            atexit.register(partial(unlock_subset, subset))
+            return context.window_manager.invoke_popup(self)
+
+    def draw(self, context):
+        """Draw UI."""
+        if context.window_manager.subset_is_locked:
+            col = self.layout.column()
+
+            # Display alert
+            row = col.row()
+            row.alert = True
+            row.label(text="Your subset is locked!")
+
+            # Display enum
+            col.prop(self, "action", expand=True)
+        else:
+            layout = self.layout
+            layout.ui_units_x = 7.5
+            layout.label(text="Subset is available!")
+
+    def execute(self, context):
+        """Execute this operator."""
+        if not context.window_manager.subset_is_locked:
+            return {"FINISHED"}
+
+        elif self.action == "QUIT":
+            bpy.ops.wm.quit_blender()
+            return {"FINISHED"}
+
+        elif self.action == "PROCEED":
+            return {"FINISHED"}
+
+        else:
+            self.report({"ERROR"}, "Undefined enum value error")
+            return {"CANCELLED"}
+
+    def cancel(self, context):
+        """Run when this operator is cancelled."""
+        if context.window_manager.subset_is_locked:
+            bpy.ops.wm.subset_is_locked_operator("INVOKE_DEFAULT")
 
 
 classes = [
@@ -1306,6 +1399,7 @@ classes = [
     SCENE_OT_DuplicateOpenpypeInstance,
     SCENE_OT_MoveOpenpypeInstance,
     SCENE_OT_MoveOpenpypeInstanceDatablock,
+    WM_OT_SubsetIsLocked,
 ]
 
 
@@ -1314,7 +1408,7 @@ def register():
 
     pcoll = bpy.utils.previews.new()
     pyblish_icon_file = Path(__file__).parent / "icons" / "pyblish-32x32.png"
-    pcoll.load("pyblish_menu_icon", str(pyblish_icon_file.absolute()), 'IMAGE')
+    pcoll.load("pyblish_menu_icon", str(pyblish_icon_file.absolute()), "IMAGE")
     PREVIEW_COLLECTIONS["avalon"] = pcoll
 
     for cls in classes:
@@ -1327,6 +1421,35 @@ def register():
 
     # Hack to store creators with parameters for optimization purpose
     bpy.app.handlers.load_post.append(discover_creators_handler)
+
+    # Following actions needs to be launched when the scene is loaded
+    # but as they use operators, we can't use the load_post() handler
+    # as the UI is not totally available when it's triggered.
+    #
+    # That's why a timer is used, this way the code is launched
+    # as soon as the scene AND the ui are fully loaded.
+    #
+    # To call a delayed operator use:
+    # bpy.app.timers.register(
+    #     partial(delayed_wm_operator, <your operator>),
+    #     persistent=True,
+    # )
+    def delayed_wm_operator(wm_operator):
+        if hasattr(
+            bpy.types, wm_operator.idname()
+        ):
+            wm_operator("INVOKE_DEFAULT")
+
+    # Check subset is locked
+    # As this is optional, check settings first
+    if get_lock_system_enabled():
+        bpy.app.timers.register(
+            partial(
+                delayed_wm_operator,
+                bpy.ops.wm.subset_is_locked_operator
+            ),
+            persistent=True,
+        )
 
 
 def unregister():

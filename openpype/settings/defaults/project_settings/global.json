@@ -553,7 +553,11 @@
                     "is_include": true,
                     "filter_families": []
                 }
-            ]
+            ],
+            "LockFileInDb": {
+                "enabled": false,
+                "flush_delay": 72
+            }
         },
         "publish": {
             "template_name_profiles": [
