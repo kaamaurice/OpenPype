@@ -67,6 +67,8 @@ def get_op_item_name_from_zou(
 ) -> str:
     """Helper function to build OpenPype item name from zou item.
 
+    Because OpenPype doesn't allow two entities to have the same name,
+    name is built with parents hierarchy `({episode}_){sequence}_{shot}`.
     Args:
         item (dict): Zou item representation.
         parent_name (Optional[str]): Item parent's name or None.
