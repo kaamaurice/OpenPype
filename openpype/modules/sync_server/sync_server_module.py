@@ -1674,6 +1674,7 @@ class SyncServerModule(OpenPypeModule, ITrayModule):
 
         aggr = [
             {"$match": match},
+            {"$limit": 5000},  # limit to 5000 representations at once
             {'$unwind': '$files'},
             {'$addFields': {
                 'order_remote': {
